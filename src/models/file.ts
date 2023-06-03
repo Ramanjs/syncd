@@ -6,6 +6,7 @@ interface FileAttributes {
   name: string
   hash: string
   lastModified: Date
+  lastChanged: Date
 }
 
 const File: ModelDefined<FileAttributes, FileAttributes> = sequelize.define('File', {
@@ -22,6 +23,10 @@ const File: ModelDefined<FileAttributes, FileAttributes> = sequelize.define('Fil
     allowNull: false
   },
   lastModified: {
+    type: DataTypes.DATE,
+    allowNull: false
+  },
+  lastChanged: {
     type: DataTypes.DATE,
     allowNull: false
   }

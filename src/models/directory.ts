@@ -4,6 +4,7 @@ import sequelize from '../databaseConnection'
 interface DirectoryAttributes {
   path: string
   lastModified: Date
+  lastChanged: Date
 }
 
 const Directory: ModelDefined<
@@ -15,6 +16,10 @@ DirectoryAttributes, DirectoryAttributes
     allowNull: false
   },
   lastModified: {
+    type: DataTypes.DATE,
+    allowNull: false
+  },
+  lastChanged: {
     type: DataTypes.DATE,
     allowNull: false
   }

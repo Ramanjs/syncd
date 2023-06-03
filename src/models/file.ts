@@ -1,9 +1,15 @@
-import { DataTypes } from 'sequelize'
-import Directory from './Directory'
+import { type ModelDefined, DataTypes } from 'sequelize'
+import Directory from './directory'
 import sequelize from '../databaseConnection'
 
-const File = sequelize.define('File', {
-  fileName: {
+interface FileAttributes {
+  name: string
+  hash: string
+  lastModified: Date
+}
+
+const File: ModelDefined<FileAttributes, FileAttributes> = sequelize.define('File', {
+  name: {
     type: DataTypes.STRING,
     validate: {
       min: 1,
@@ -23,4 +29,5 @@ const File = sequelize.define('File', {
 
 File.belongsTo(Directory)
 
+export type { FileAttributes }
 export default File

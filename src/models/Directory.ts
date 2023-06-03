@@ -14,4 +14,6 @@ const Directory = sequelize.define('Directory', {
   }
 })
 
+Directory.belongsTo(Directory)
+
 export default Directory

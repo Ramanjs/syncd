@@ -4,6 +4,7 @@ import sequelize from '../databaseConnection'
 
 interface FileAttributes {
   name: string
+  path: string
   hash: string
   lastModified: Date
   lastChanged: Date
@@ -17,6 +18,13 @@ const File: ModelDefined<FileAttributes, FileAttributes> = sequelize.define('Fil
       max: 255
     },
     allowNull: false
+  },
+  path: {
+    type: DataTypes.STRING,
+    validate: {
+      min: 1,
+      max: 4096
+    }
   },
   hash: {
     type: DataTypes.STRING(64),

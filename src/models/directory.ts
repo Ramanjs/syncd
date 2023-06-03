@@ -2,6 +2,7 @@ import { DataTypes, type ModelDefined } from 'sequelize'
 import sequelize from '../databaseConnection'
 
 interface DirectoryAttributes {
+  name: string
   path: string
   lastModified: Date
   lastChanged: Date
@@ -10,8 +11,20 @@ interface DirectoryAttributes {
 const Directory: ModelDefined<
 DirectoryAttributes, DirectoryAttributes
 > = sequelize.define('Directory', {
+  name: {
+    type: DataTypes.STRING,
+    validate: {
+      min: 1,
+      max: 255
+    },
+    allowNull: false
+  },
   path: {
     type: DataTypes.STRING,
+    validate: {
+      min: 1,
+      max: 4096
+    },
     unique: true,
     allowNull: false
   },

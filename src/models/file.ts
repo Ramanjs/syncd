@@ -1,8 +1,9 @@
-import { type ModelDefined, DataTypes } from 'sequelize'
+import { type ModelDefined, DataTypes, type Optional } from 'sequelize'
 import Directory from './directory'
 import sequelize from '../databaseConnection'
 
 interface FileAttributes {
+  id: number
   name: string
   path: string
   hash: string
@@ -10,7 +11,11 @@ interface FileAttributes {
   lastChanged: Date
 }
 
-const File: ModelDefined<FileAttributes, FileAttributes> = sequelize.define('File', {
+type FileCreationAttributes = Optional<FileAttributes, 'id'>
+
+const File: ModelDefined<
+FileAttributes, FileCreationAttributes
+> = sequelize.define('File', {
   name: {
     type: DataTypes.STRING,
     validate: {
@@ -42,5 +47,5 @@ const File: ModelDefined<FileAttributes, FileAttributes> = sequelize.define('Fil
 
 File.belongsTo(Directory)
 
-export type { FileAttributes }
+export type { FileAttributes, FileCreationAttributes }
 export default File

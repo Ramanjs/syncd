@@ -29,7 +29,8 @@ FileAttributes, FileCreationAttributes
     validate: {
       min: 1,
       max: 4096
-    }
+    },
+    unique: true
   },
   hash: {
     type: DataTypes.STRING(64),

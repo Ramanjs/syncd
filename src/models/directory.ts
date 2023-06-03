@@ -28,7 +28,7 @@ DirectoryAttributes, DirectoryCreationAttributes
       min: 1,
       max: 4096
     },
-    allowNull: false
+    unique: true
   },
   lastModified: {
     type: DataTypes.DATE,

@@ -21,6 +21,6 @@ const File = sequelize.define('File', {
   }
 })
 
-Directory.hasMany(File)
+File.belongsTo(Directory)
 
 export default File

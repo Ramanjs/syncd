@@ -28,7 +28,6 @@ DirectoryAttributes, DirectoryCreationAttributes
       min: 1,
       max: 4096
     },
-    unique: true,
     allowNull: false
   },
   lastModified: {

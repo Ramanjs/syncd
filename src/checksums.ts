@@ -3,6 +3,7 @@ import WorkerPool from './workerThreads/workerPool'
 import path from 'path'
 import { readFile } from 'fs/promises'
 import { type FileCreationAttributes } from './models/file'
+import type SyncdRepository from './SyncdRepository'
 
 const pool = new WorkerPool(os.cpus().length, path.join(__dirname, 'workerThreads/worker.js'))
 
@@ -15,9 +16,10 @@ async function hashFile (file: FileCreationAttributes): Promise<void> {
   })
 }
 
-function hashAllFiles (files: FileCreationAttributes[]): void {
-  pool.setNumFiles(files.length)
-  for (const file of files) {
+function hashAllFiles (repo: SyncdRepository): void {
+  pool.setNumFiles(repo.fileAdditions.length)
+  pool.setRepo(repo)
+  for (const file of repo.fileAdditions) {
     void hashFile(file)
   }
 }

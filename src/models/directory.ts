@@ -1,19 +1,22 @@
-import { DataTypes } from 'sequelize'
+import { DataTypes, type ModelDefined } from 'sequelize'
 import sequelize from '../databaseConnection'
+import { statusConfig } from '../config/status'
 
 interface DirectoryAttributes {
   path: string
   lastModified: Date
   lastChanged: Date
   parent: string
+  status: string
 }
 
-const Directory = sequelize.define('Directory', {
+const Directory: ModelDefined<
+DirectoryAttributes, DirectoryAttributes
+> = sequelize.define('Directory', {
   path: {
     type: DataTypes.STRING,
     validate: {
-      min: 1,
-      max: 4096
+      len: [1, 4096]
     },
     primaryKey: true
   },
@@ -28,9 +31,16 @@ const Directory = sequelize.define('Directory', {
   parent: {
     type: DataTypes.STRING,
     validate: {
-      min: 1,
-      max: 4096
+      len: [1, 4096]
     }
+  },
+  status: {
+    type: DataTypes.ENUM(
+      statusConfig.PENDING_ADDITION,
+      statusConfig.PENDING_DELETION,
+      statusConfig.PENDING_UPDATE,
+      statusConfig.DONE
+    )
   }
 })
 

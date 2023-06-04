@@ -1,4 +1,5 @@
 import { type ModelDefined, DataTypes, type Optional } from 'sequelize'
+import { statusConfig } from '../config/status'
 import Directory from './directory'
 import sequelize from '../databaseConnection'
 
@@ -9,6 +10,7 @@ interface FileAttributes {
   lastModified: Date
   lastChanged: Date
   parent: string
+  status: string
 }
 
 type FileCreationAttributes = Optional<FileAttributes, 'id'>
@@ -19,18 +21,14 @@ FileAttributes, FileCreationAttributes
   name: {
     type: DataTypes.STRING,
     validate: {
-      min: 1,
-      max: 255
-    },
-    allowNull: false
+      len: [1, 255]
+    }
   },
   hash: {
     type: DataTypes.STRING(64),
     validate: {
-      min: 1,
-      max: 64
-    },
-    allowNull: false
+      len: [64, 64]
+    }
   },
   lastModified: {
     type: DataTypes.DATE,
@@ -43,9 +41,16 @@ FileAttributes, FileCreationAttributes
   parent: {
     type: DataTypes.STRING,
     validate: {
-      min: 1,
-      max: 4096
+      len: [1, 4096]
     }
+  },
+  status: {
+    type: DataTypes.ENUM(
+      statusConfig.PENDING_ADDITION,
+      statusConfig.PENDING_DELETION,
+      statusConfig.PENDING_UPDATE,
+      statusConfig.DONE
+    )
   }
 })
 

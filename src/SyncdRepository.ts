@@ -1,17 +1,9 @@
 import path from 'path'
-import File, { type FileAttributes, type FileCreationAttributes } from './models/file'
 import { type Model } from 'sequelize'
+import File, { type FileAttributes, type FileCreationAttributes } from './models/file'
 import Directory, { type DirectoryAttributes } from './models/directory'
+import type { FileUpdationAttributes } from './models/fileUpdation'
 import { lstat, opendir } from 'fs/promises'
-
-interface FileUpdate {
-  oldName: string
-  oldParent: string
-  newName: string
-  newParent: string
-  lastModified: Date
-  lastChanged: Date
-}
 
 class SyncdRepository {
   workdir: string
@@ -24,7 +16,7 @@ class SyncdRepository {
   fileDeletions: FileAttributes[]
   fileDeletionsMap: Map<string, FileAttributes>
   directoryDeletions: DirectoryAttributes[]
-  fileUpdations: FileUpdate[]
+  fileUpdations: FileUpdationAttributes[]
 
   constructor (repopath: string) {
     this.workdir = repopath

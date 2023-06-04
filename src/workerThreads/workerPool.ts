@@ -2,6 +2,7 @@ import { AsyncResource } from 'async_hooks'
 import { EventEmitter } from 'events'
 import { Worker } from 'worker_threads'
 import type { hashCallback } from '../checksums'
+import type SyncdRepository from '../SyncdRepository'
 
 const kWorkerFreedEvent = Symbol('kWorkerFreedEvent')
 
@@ -31,6 +32,7 @@ export default class WorkerPool extends EventEmitter {
   workers: Array<Worker & AsyncResourceWorker>
   freeWorkers: Array<Worker & AsyncResourceWorker>
   tasks: Array<{ task: Buffer, callback: hashCallback }>
+  repo: SyncdRepository | null
 
   constructor (numThreads: number, workerFile: string) {
     super()
@@ -41,6 +43,7 @@ export default class WorkerPool extends EventEmitter {
     this.workers = []
     this.freeWorkers = []
     this.tasks = []
+    this.repo = null
 
     for (let i = 0; i < numThreads; i++) { this.addNewWorker() }
 
@@ -58,12 +61,17 @@ export default class WorkerPool extends EventEmitter {
       if (this.numFiles === this.filesProcessed) {
         console.log('stopping worker pool')
         this.close()
+        void this.repo?.saveToDB()
       }
     })
   }
 
   setNumFiles (numFiles: number): void {
     this.numFiles = numFiles
+  }
+
+  setRepo (repo: SyncdRepository): void {
+    this.repo = repo
   }
 
   addNewWorker (): void {

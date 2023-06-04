@@ -1,4 +1,4 @@
-import { DataTypes } from 'sequelize'
+import { DataTypes, type ModelDefined } from 'sequelize'
 import sequelize from '../databaseConnection'
 
 interface FileUpdationAttributes {
@@ -10,7 +10,9 @@ interface FileUpdationAttributes {
   lastChanged: Date
 }
 
-const FileUpdation = sequelize.define('FileUpdation', {
+const FileUpdation: ModelDefined<
+FileUpdationAttributes, FileUpdationAttributes
+> = sequelize.define('FileUpdation', {
   oldName: {
     type: DataTypes.STRING,
     validate: {

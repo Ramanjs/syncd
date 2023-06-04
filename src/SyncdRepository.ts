@@ -14,9 +14,7 @@ class SyncdRepository {
   files: Array<Model<FileAttributes, FileCreationAttributes>>
   directories: Array<Model<DirectoryAttributes, DirectoryAttributes>>
   fileAdditions: FileCreationAttributes[]
-  fileAdditionsMap: Map<string, FileCreationAttributes>
   fileDeletions: FileAttributes[]
-  fileDeletionsMap: Map<string, FileAttributes>
   directoryAdditions: DirectoryAttributes[]
   directoryDeletions: DirectoryAttributes[]
   fileUpdations: FileUpdationAttributes[]
@@ -31,9 +29,6 @@ class SyncdRepository {
     this.fileDeletions = []
     this.directoryDeletions = []
     this.fileUpdations = []
-
-    this.fileAdditionsMap = new Map()
-    this.fileDeletionsMap = new Map()
   }
 
   async loadDatabase (): Promise<void> {
@@ -43,38 +38,23 @@ class SyncdRepository {
     // console.log('All files: ', JSON.stringify(this.files, null, 2))
   }
 
-  populateFileAdditionsMap (): void {
-    for (const file of this.fileAdditions) {
-      this.fileAdditionsMap.set(file.hash, file)
-    }
-  }
-
-  populateFileDeletionsMap (): void {
-    for (const file of this.fileDeletions) {
-      this.fileDeletionsMap.set(file.hash, file)
-    }
-  }
-
   filterUpdatedFiles (): void {
-    this.populateFileAdditionsMap()
-    this.populateFileDeletionsMap()
-
-    for (const [key, value] of this.fileAdditionsMap) {
-      if (this.fileDeletionsMap.has(key)) {
-        const oldFile = this.fileDeletionsMap.get(key)
-        const newFile = value
-        if ((oldFile != null) && (newFile != null)) {
-          this.fileUpdations.push({
-            oldName: oldFile.name,
-            oldParent: oldFile.parent,
-            newName: newFile.name,
-            newParent: newFile.parent,
-            lastModified: newFile.lastModified,
-            lastChanged: newFile.lastChanged
-          })
-        }
-        this.fileAdditionsMap.delete(key)
-        this.fileDeletionsMap.delete(key)
+    for (const file of this.fileAdditions) {
+      const oldFile = this.fileDeletions.find((value) => value.hash === file.hash)
+      const newFile = file
+      if (oldFile != null) {
+        this.fileUpdations.push({
+          oldName: oldFile.name,
+          oldParent: oldFile.parent,
+          newName: newFile.name,
+          newParent: newFile.parent,
+          lastModified: newFile.lastModified,
+          lastChanged: newFile.lastChanged
+        })
+        const newIndex = this.fileAdditions.indexOf(newFile)
+        this.fileAdditions.splice(newIndex, 1)
+        const oldIndex = this.fileDeletions.indexOf(oldFile)
+        this.fileDeletions.splice(oldIndex, 1)
       }
     }
   }
@@ -195,10 +175,10 @@ class SyncdRepository {
         }
       })
     }
-    await File.bulkCreate(Array.from(this.fileAdditionsMap.values()), {
+    await File.bulkCreate(this.fileAdditions, {
       validate: true
     })
-    for (const file of this.fileDeletionsMap.values()) {
+    for (const file of this.fileDeletions) {
       await File.update({
         status: statusConfig.PENDING_DELETION
       }, {

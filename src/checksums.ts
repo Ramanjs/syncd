@@ -7,7 +7,7 @@ import { type FileCreationAttributes } from './models/file'
 const pool = new WorkerPool(os.cpus().length, path.join(__dirname, 'workerThreads/worker.js'))
 
 async function hashFile (file: FileCreationAttributes): Promise<void> {
-  const fileContent = await readFile(file.path)
+  const fileContent = await readFile(path.join(file.parent, file.name))
   pool.runTask(fileContent, (err: Error | null, result: Uint8Array | null) => {
     if (err != null) console.log(err)
     if (result != null) file.hash = Buffer.from(result).toString('hex')

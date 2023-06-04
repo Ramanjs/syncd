@@ -1,14 +1,14 @@
 import path from 'path'
 import File, { type FileAttributes, type FileCreationAttributes } from './models/file'
 import { type Model } from 'sequelize'
-import Directory, { type DirectoryAttributes, type DirectoryCreationAttributes } from './models/directory'
+import Directory, { type DirectoryAttributes } from './models/directory'
 import { lstat, opendir } from 'fs/promises'
 
 interface FileUpdate {
   oldName: string
-  oldPath: string
+  oldParent: string
   newName: string
-  newPath: string
+  newParent: string
   lastModified: Date
   lastChanged: Date
 }
@@ -17,10 +17,10 @@ class SyncdRepository {
   workdir: string
   syncddir: string
   files: Array<Model<FileAttributes, FileCreationAttributes>>
-  directories: Array<Model<DirectoryAttributes, DirectoryCreationAttributes>>
+  directories: Array<Model<DirectoryAttributes, DirectoryAttributes>>
   fileAdditions: FileCreationAttributes[]
   fileAdditionsMap: Map<string, FileCreationAttributes>
-  directoryAdditions: DirectoryCreationAttributes[]
+  directoryAdditions: DirectoryAttributes[]
   fileDeletions: FileAttributes[]
   fileDeletionsMap: Map<string, FileAttributes>
   directoryDeletions: DirectoryAttributes[]
@@ -71,9 +71,9 @@ class SyncdRepository {
         if ((oldFile != null) && (newFile != null)) {
           this.fileUpdations.push({
             oldName: oldFile.name,
-            oldPath: oldFile.path,
+            oldParent: oldFile.parent,
             newName: newFile.name,
-            newPath: newFile.path,
+            newParent: newFile.parent,
             lastModified: newFile.lastModified,
             lastChanged: newFile.lastChanged
           })
@@ -84,7 +84,7 @@ class SyncdRepository {
     }
   }
 
-  async handleDirectory (directoryName: string, directoryPath: string): Promise<void> {
+  async handleDirectory (directoryPath: string, directoryParent: string): Promise<void> {
     // fetch directory object
     // TODO: Optimize using Map
     const directory = this.directories.filter(directory => {
@@ -94,41 +94,43 @@ class SyncdRepository {
     const stat = await lstat(directoryPath)
     if (directory.length === 0) {
       this.directoryAdditions.push({
-        name: directoryName,
         path: directoryPath,
         lastModified: stat.mtime,
-        lastChanged: stat.ctime
+        lastChanged: stat.ctime,
+        parent: directoryParent
       })
     } else {
       const oldDirectory = directory[0]
       if (oldDirectory.dataValues.lastModified !== stat.mtime ||
                oldDirectory.dataValues.lastChanged !== stat.ctime) {
         this.directoryAdditions.push({
-          name: directoryName,
           path: directoryPath,
           lastModified: stat.mtime,
-          lastChanged: stat.ctime
+          lastChanged: stat.ctime,
+          parent: directoryParent
         })
         this.directoryDeletions.push(oldDirectory.dataValues)
       }
     }
   }
 
-  async handleFile (fileName: string, filePath: string): Promise<void> {
+  async handleFile (fileName: string, fileParent: string): Promise<void> {
     // fetch file object
     // TODO: Optimize using Map
+    const filePath = path.join(fileParent, fileName)
     const file = this.files.filter(file => {
-      return file.dataValues.path === filePath
+      const dbFilePath = path.join(file.dataValues.parent, file.dataValues.name)
+      return dbFilePath === filePath
     })
 
     const stat = await lstat(filePath)
     if (file.length === 0) {
       this.fileAdditions.push({
         name: fileName,
-        path: filePath,
         hash: '',
         lastModified: stat.mtime,
-        lastChanged: stat.ctime
+        lastChanged: stat.ctime,
+        parent: fileParent
       })
     } else {
       const oldFile = file[0]
@@ -136,10 +138,10 @@ class SyncdRepository {
          oldFile.dataValues.lastChanged !== stat.ctime) {
         this.fileAdditions.push({
           name: fileName,
-          path: filePath,
           hash: '',
           lastModified: stat.mtime,
-          lastChanged: stat.ctime
+          lastChanged: stat.ctime,
+          parent: fileParent
         })
         this.fileDeletions.push(oldFile.dataValues)
       }
@@ -151,12 +153,11 @@ class SyncdRepository {
       const dir = await opendir(dirpath)
       for await (const dirent of dir) {
         if (dirent.isDirectory()) {
-          const directoryPath = path.join(dir.path, dirent.name)
-          await this.handleDirectory(dirent.name, directoryPath)
+          const directoryPath = path.join(dirpath, dirent.name)
+          await this.handleDirectory(directoryPath, dirpath)
           await this.walkWorkdir(directoryPath)
         } else if (dirent.isFile()) {
-          const filePath = path.join(dir.path, dirent.name)
-          await this.handleFile(dirent.name, filePath)
+          await this.handleFile(dirent.name, dirpath)
         }
       }
     } catch (err) {

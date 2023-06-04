@@ -113,15 +113,4 @@ class SyncdRepository {
   }
 }
 
-const repo = new SyncdRepository('.')
-repo.loadDatabase()
-  .then(async () => {
-    console.log('success loading')
-    await repo.walkWorkdir('.')
-    console.log(repo.fileAdditions)
-  })
-  .catch((err) => {
-    console.log('error', err)
-  })
-
 export default SyncdRepository

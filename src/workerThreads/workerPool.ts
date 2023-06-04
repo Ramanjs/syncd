@@ -1,6 +1,7 @@
 import { AsyncResource } from 'async_hooks'
 import { EventEmitter } from 'events'
 import { Worker } from 'worker_threads'
+import type { hashCallback } from '../checksums'
 
 const kWorkerFreedEvent = Symbol('kWorkerFreedEvent')
 
@@ -9,14 +10,14 @@ interface AsyncResourceWorker {
 }
 
 class WorkerPoolTaskInfo extends AsyncResource {
-  callback: any
+  callback: hashCallback
 
-  constructor (callback: any) {
+  constructor (callback: hashCallback) {
     super('WorkerPoolTaskInfo')
     this.callback = callback
   }
 
-  done (err: Error | null, result: any): void {
+  done (err: Error | null, result: Uint8Array | null): void {
     this.runInAsyncScope(this.callback, null, err, result)
     this.emitDestroy() // `TaskInfo`s are used only once.
   }
@@ -24,14 +25,18 @@ class WorkerPoolTaskInfo extends AsyncResource {
 
 export default class WorkerPool extends EventEmitter {
   numThreads: number
+  numFiles: number
+  filesProcessed: number
   workerFile: string
   workers: Array<Worker & AsyncResourceWorker>
   freeWorkers: Array<Worker & AsyncResourceWorker>
-  tasks: any[]
+  tasks: Array<{ task: Buffer, callback: hashCallback }>
 
   constructor (numThreads: number, workerFile: string) {
     super()
     this.numThreads = numThreads
+    this.numFiles = 0
+    this.filesProcessed = 0
     this.workerFile = workerFile
     this.workers = []
     this.freeWorkers = []
@@ -43,10 +48,22 @@ export default class WorkerPool extends EventEmitter {
     // the next task pending in the queue, if any.
     this.on(kWorkerFreedEvent, () => {
       if (this.tasks.length > 0) {
-        const { task, callback } = this.tasks.shift()
-        this.runTask(task, callback)
+        const nextTask = this.tasks.shift()
+        if (nextTask != null) {
+          const { task, callback } = nextTask
+          this.runTask(task, callback)
+        }
+      }
+
+      if (this.numFiles === this.filesProcessed) {
+        console.log('stopping worker pool')
+        this.close()
       }
     })
+  }
+
+  setNumFiles (numFiles: number): void {
+    this.numFiles = numFiles
   }
 
   addNewWorker (): void {
@@ -56,6 +73,7 @@ export default class WorkerPool extends EventEmitter {
       // remove the `TaskInfo` associated with the Worker, and mark it as free
       // again.
       worker.kTaskInfo?.done(null, result)
+      this.filesProcessed += 1
       worker.kTaskInfo = null
       this.freeWorkers.push(worker)
       this.emit(kWorkerFreedEvent)
@@ -74,7 +92,7 @@ export default class WorkerPool extends EventEmitter {
     this.emit(kWorkerFreedEvent)
   }
 
-  runTask (task: any, callback: any): void {
+  runTask (task: Buffer, callback: hashCallback): void {
     if (this.freeWorkers.length === 0) {
       // No free threads, wait until a worker thread becomes free.
       this.tasks.push({ task, callback })

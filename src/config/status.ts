@@ -1,0 +1,15 @@
+const statusConfig = {
+  PENDING_ADDITION: 'PENDING_ADDITION',
+  PENDING_DELETION: 'PENDING_DELETION',
+  PENDING_UPDATE: 'PENDING_UPDATE',
+  DONE: 'DONE'
+}
+
+enum statusEnum {
+  'PENDING_ADDITION',
+  'PENDING_DELETION',
+  'PENDING_UPDATE',
+  'DONE'
+}
+
+export { statusEnum, statusConfig }

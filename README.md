@@ -28,6 +28,21 @@ A CLI tool to sync your local directory with Google Drive.
 
 - [ ] Checkout log-updates and similar packages for displaying progress bars
 
+## SQLite Schema 
+
+Directory schema:
+`path`: string, unique, primary key: includes directory name
+`lastModified`: Timestamp
+`lastChanged`: Timestamp
+`parent`: string, self-referential foreign key: `path` of parent directory
+
+File schema:
+`name`: string
+`hash`: string
+`lastModified`: Timestamp
+`lastChanged`: Timestamp
+`parent`: string: foreign key to Directory table
+
 ## Business logic
 
 All possible operations inside a directory are:
@@ -52,3 +67,4 @@ Diffing a directory efficiently is a tough task. A simple algorithm to detect ch
 6. Finally start syncing all the changes with google drive. Before that we need to write all the pending changes to the database incase of unexpected failure. There is also a possibility of incomplete uploads/interruption/system failure.
     1. To counter this, we could add a new column for each file inside the database. For instance, use `PENDING_ADDITION`, `PENDING_DELETION` and `PENDING_UPDATE` to denate starting state of each file in the 3 lists.
     2. On completion of their repective operations, change the state to `DONE`. While we can use the same tables for pending addition and deletion operations, we need a separate table to store the pending updates to any file or directory (for example, a new table that stores, the previous and new, folder and name of a file).This step allows us to check the state of a database before doing any action and apply pending operations.
+

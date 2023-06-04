@@ -5,10 +5,10 @@ import sequelize from '../databaseConnection'
 interface FileAttributes {
   id: number
   name: string
-  path: string
   hash: string
   lastModified: Date
   lastChanged: Date
+  parent: string
 }
 
 type FileCreationAttributes = Optional<FileAttributes, 'id'>
@@ -24,16 +24,12 @@ FileAttributes, FileCreationAttributes
     },
     allowNull: false
   },
-  path: {
-    type: DataTypes.STRING,
-    validate: {
-      min: 1,
-      max: 4096
-    },
-    unique: true
-  },
   hash: {
     type: DataTypes.STRING(64),
+    validate: {
+      min: 1,
+      max: 64
+    },
     allowNull: false
   },
   lastModified: {
@@ -43,10 +39,19 @@ FileAttributes, FileCreationAttributes
   lastChanged: {
     type: DataTypes.DATE,
     allowNull: false
+  },
+  parent: {
+    type: DataTypes.STRING,
+    validate: {
+      min: 1,
+      max: 4096
+    }
   }
 })
 
-File.belongsTo(Directory)
+File.belongsTo(Directory, {
+  foreignKey: 'parent'
+})
 
 export type { FileAttributes, FileCreationAttributes }
 export default File

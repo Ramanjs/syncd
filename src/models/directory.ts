@@ -1,34 +1,21 @@
-import { DataTypes, type Optional, type ModelDefined } from 'sequelize'
+import { DataTypes } from 'sequelize'
 import sequelize from '../databaseConnection'
 
 interface DirectoryAttributes {
-  id: number
-  name: string
   path: string
   lastModified: Date
   lastChanged: Date
+  parent: string
 }
 
-type DirectoryCreationAttributes = Optional<DirectoryAttributes, 'id'>
-
-const Directory: ModelDefined<
-DirectoryAttributes, DirectoryCreationAttributes
-> = sequelize.define('Directory', {
-  name: {
-    type: DataTypes.STRING,
-    validate: {
-      min: 1,
-      max: 255
-    },
-    allowNull: false
-  },
+const Directory = sequelize.define('Directory', {
   path: {
     type: DataTypes.STRING,
     validate: {
       min: 1,
       max: 4096
     },
-    unique: true
+    primaryKey: true
   },
   lastModified: {
     type: DataTypes.DATE,
@@ -37,10 +24,19 @@ DirectoryAttributes, DirectoryCreationAttributes
   lastChanged: {
     type: DataTypes.DATE,
     allowNull: false
+  },
+  parent: {
+    type: DataTypes.STRING,
+    validate: {
+      min: 1,
+      max: 4096
+    }
   }
 })
 
-Directory.belongsTo(Directory)
+Directory.belongsTo(Directory, {
+  foreignKey: 'parent'
+})
 
-export type { DirectoryAttributes, DirectoryCreationAttributes }
+export type { DirectoryAttributes }
 export default Directory

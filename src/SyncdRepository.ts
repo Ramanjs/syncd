@@ -1,5 +1,6 @@
 import path from 'path'
 import { type Model } from 'sequelize'
+import { Op } from 'sequelize'
 import File, { type FileAttributes, type FileCreationAttributes } from './models/file'
 import Directory, { type DirectoryAttributes } from './models/directory'
 import type { FileUpdationAttributes } from './models/fileUpdation'
@@ -34,9 +35,21 @@ class SyncdRepository {
   async loadDatabase (): Promise<void> {
     this.files = await File.findAll()
     this.directories = await Directory.findAll()
+
+    for (const directory of this.directories) {
+      this.directoryDeletions.push({
+        ...directory.dataValues
+      })
+    }
+
+    for (const file of this.files) {
+      this.fileDeletions.push({
+        ...file.dataValues
+      })
+    }
+
     console.log(this.files)
     console.log(this.directories)
-    // console.log('All files: ', JSON.stringify(this.files, null, 2))
   }
 
   filterUpdatedFiles (): void {
@@ -63,8 +76,8 @@ class SyncdRepository {
   async handleDirectory (directoryPath: string, directoryParent: string): Promise<void> {
     // fetch directory object
     // TODO: Optimize using Map
-    const directory = this.directories.filter(directory => {
-      return directory.dataValues.path === directoryPath
+    const directory = this.directoryDeletions.filter(directory => {
+      return directory.path === directoryPath
     })
 
     const stat = await lstat(directoryPath)
@@ -77,18 +90,8 @@ class SyncdRepository {
         status: statusConfig.PENDING_ADDITION
       })
     } else {
-      const oldDirectory = directory[0]
-      if (oldDirectory.dataValues.lastModified.getTime() !== stat.mtime.getTime() ||
-               oldDirectory.dataValues.lastChanged.getTime() !== stat.ctime.getTime()) {
-        this.directoryAdditions.push({
-          path: directoryPath,
-          lastModified: stat.mtime,
-          lastChanged: stat.ctime,
-          parent: directoryParent,
-          status: statusConfig.PENDING_ADDITION
-        })
-        this.directoryDeletions.push(oldDirectory.dataValues)
-      }
+      const index = this.directoryDeletions.indexOf(directory[0])
+      this.directoryDeletions.splice(index, 1)
     }
   }
 
@@ -96,8 +99,8 @@ class SyncdRepository {
     // fetch file object
     // TODO: Optimize using Map
     const filePath = path.join(fileParent, fileName)
-    const file = this.files.filter(file => {
-      const dbFilePath = path.join(file.dataValues.parent, file.dataValues.name)
+    const file = this.fileDeletions.filter(file => {
+      const dbFilePath = path.join(file.parent, file.name)
       return dbFilePath === filePath
     })
 
@@ -113,8 +116,8 @@ class SyncdRepository {
       })
     } else {
       const oldFile = file[0]
-      if (oldFile.dataValues.lastModified.getTime() !== stat.mtime.getTime() ||
-         oldFile.dataValues.lastChanged.getTime() !== stat.ctime.getTime()) {
+      if (oldFile.lastModified.getTime() !== stat.mtime.getTime() ||
+         oldFile.lastChanged.getTime() !== stat.ctime.getTime()) {
         this.fileAdditions.push({
           name: fileName,
           hash: '',
@@ -123,7 +126,9 @@ class SyncdRepository {
           parent: fileParent,
           status: statusConfig.PENDING_ADDITION
         })
-        this.fileDeletions.push(oldFile.dataValues)
+      } else {
+        const index = this.fileDeletions.indexOf(oldFile)
+        this.fileDeletions.splice(index, 1)
       }
     }
   }
@@ -190,6 +195,18 @@ class SyncdRepository {
     await FileUpdation.bulkCreate(this.fileUpdations, {
       validate: true
     })
+    for (const fileUpdate of this.fileUpdations) {
+      await File.update({
+        status: statusConfig.PENDING_UPDATE
+      }, {
+        where: {
+          [Op.and]: [
+            { name: fileUpdate.oldName },
+            { parent: fileUpdate.oldParent }
+          ]
+        }
+      })
+    }
   }
 }
 

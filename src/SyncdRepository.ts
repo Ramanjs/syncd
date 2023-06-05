@@ -35,6 +35,7 @@ class SyncdRepository {
     this.files = await File.findAll()
     this.directories = await Directory.findAll()
     console.log(this.files)
+    console.log(this.directories)
     // console.log('All files: ', JSON.stringify(this.files, null, 2))
   }
 
@@ -77,8 +78,8 @@ class SyncdRepository {
       })
     } else {
       const oldDirectory = directory[0]
-      if (oldDirectory.dataValues.lastModified !== stat.mtime ||
-               oldDirectory.dataValues.lastChanged !== stat.ctime) {
+      if (oldDirectory.dataValues.lastModified.getTime() !== stat.mtime.getTime() ||
+               oldDirectory.dataValues.lastChanged.getTime() !== stat.ctime.getTime()) {
         this.directoryAdditions.push({
           path: directoryPath,
           lastModified: stat.mtime,
@@ -112,8 +113,8 @@ class SyncdRepository {
       })
     } else {
       const oldFile = file[0]
-      if (oldFile.dataValues.lastModified !== stat.mtime ||
-         oldFile.dataValues.lastChanged !== stat.ctime) {
+      if (oldFile.dataValues.lastModified.getTime() !== stat.mtime.getTime() ||
+         oldFile.dataValues.lastChanged.getTime() !== stat.ctime.getTime()) {
         this.fileAdditions.push({
           name: fileName,
           hash: '',
@@ -162,7 +163,6 @@ class SyncdRepository {
     this.filterUpdatedFiles()
     await sequelize.sync()
     await this.setupDB()
-    console.log(this.directoryAdditions)
     await Directory.bulkCreate(this.directoryAdditions, {
       validate: true
     })

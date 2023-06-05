@@ -5,7 +5,7 @@ import File, { type FileAttributes, type FileCreationAttributes } from './models
 import Directory, { type DirectoryAttributes } from './models/directory'
 import type { FileUpdationAttributes } from './models/fileUpdation'
 import { statusConfig } from './config/status'
-import { lstat, opendir } from 'fs/promises'
+import { stat, opendir } from 'fs/promises'
 import sequelize from './databaseConnection'
 import FileUpdation from './models/fileUpdation'
 
@@ -80,12 +80,12 @@ class SyncdRepository {
       return directory.path === directoryPath
     })
 
-    const stat = await lstat(directoryPath)
+    const stats = await stat(directoryPath)
     if (directory.length === 0) {
       this.directoryAdditions.push({
         path: directoryPath,
-        lastModified: stat.mtime,
-        lastChanged: stat.ctime,
+        lastModified: stats.mtime,
+        lastChanged: stats.ctime,
         parent: directoryParent,
         status: statusConfig.PENDING_ADDITION
       })
@@ -104,25 +104,25 @@ class SyncdRepository {
       return dbFilePath === filePath
     })
 
-    const stat = await lstat(filePath)
+    const stats = await stat(filePath)
     if (file.length === 0) {
       this.fileAdditions.push({
         name: fileName,
         hash: '',
-        lastModified: stat.mtime,
-        lastChanged: stat.ctime,
+        lastModified: stats.mtime,
+        lastChanged: stats.ctime,
         parent: fileParent,
         status: statusConfig.PENDING_ADDITION
       })
     } else {
       const oldFile = file[0]
-      if (oldFile.lastModified.getTime() !== stat.mtime.getTime() ||
-         oldFile.lastChanged.getTime() !== stat.ctime.getTime()) {
+      if (oldFile.lastModified.getTime() !== stats.mtime.getTime() ||
+         oldFile.lastChanged.getTime() !== stats.ctime.getTime()) {
         this.fileAdditions.push({
           name: fileName,
           hash: '',
-          lastModified: stat.mtime,
-          lastChanged: stat.ctime,
+          lastModified: stats.mtime,
+          lastChanged: stats.ctime,
           parent: fileParent,
           status: statusConfig.PENDING_ADDITION
         })
@@ -153,11 +153,11 @@ class SyncdRepository {
   async setupDB (): Promise<void> {
     const directories = await Directory.findAll()
     if (directories.length === 0) {
-      const stat = await lstat('.')
+      const stats = await stat('.')
       await Directory.create({
         path: '.',
-        lastModified: stat.mtime,
-        lastChanged: stat.ctime,
+        lastModified: stats.mtime,
+        lastChanged: stats.ctime,
         parent: '.',
         status: statusConfig.DONE
       })

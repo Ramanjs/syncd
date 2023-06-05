@@ -49,6 +49,8 @@ FileUpdationAttributes, FileUpdationAttributes
     type: DataTypes.DATE,
     allowNull: false
   }
+}, {
+  timestamps: false
 })
 
 export type { FileUpdationAttributes }

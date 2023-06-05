@@ -42,6 +42,8 @@ DirectoryAttributes, DirectoryAttributes
       statusConfig.DONE
     )
   }
+}, {
+  timestamps: false
 })
 
 Directory.belongsTo(Directory, {

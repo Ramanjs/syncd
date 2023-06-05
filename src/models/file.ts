@@ -52,6 +52,8 @@ FileAttributes, FileCreationAttributes
       statusConfig.DONE
     )
   }
+}, {
+  timestamps: false
 })
 
 File.belongsTo(Directory, {

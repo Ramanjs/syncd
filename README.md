@@ -15,10 +15,12 @@ A CLI tool to sync your local directory with Google Drive.
 - [ ] Define features and options to support
 
 - [ ] Define and write business logic
-    - [x] Define business logic
-    - [ ] Implement
+    - [x] Define logic for local diffing
+    - [x] Implement local diffing
+    - [ ] Define logic for handling uploads
+    - [ ] Implement file uploads
 
-- [ ] Research about Node Workers and checksums
+- [x] Research about Node Workers and checksums
 
 - [ ] Explore possibility of using caching: Redis and node-cache
 
@@ -53,6 +55,7 @@ All possible operations inside a directory are:
 * copy (C)
 * rename (C)
 
+### Diffing the local directory
 Diffing a directory efficiently is a tough task. A simple algorithm to detect changes in a directory would be:
 
 1. Fetch a list of all the files and directories from the database into memory.
@@ -68,3 +71,24 @@ Diffing a directory efficiently is a tough task. A simple algorithm to detect ch
     1. To counter this, we could add a new column for each file inside the database. For instance, use `PENDING_ADDITION`, `PENDING_DELETION` and `PENDING_UPDATE` to denate starting state of each file in the 3 lists.
     2. On completion of their repective operations, change the state to `DONE`. While we can use the same tables for pending addition and deletion operations, we need a separate table to store the pending updates to any file or directory (for example, a new table that stores, the previous and new, folder and name of a file).This step allows us to check the state of a database before doing any action and apply pending operations.
 
+### Upload to Drive
+
+Proposed algorithm to handle file uploads to Google Drive:
+
+1. Order in which operations should be processed:
+    1. Directory additions
+    2. File additions
+    3. File updates
+    4. File deletions
+    5. Directory deletions
+
+2. Directory additions: this part is relatively simple. Just creaete a file with a mime type of `folder` using the API.
+
+3. File addition (complex): Depending upon the size of the file, we might need to apply different upload algorithms.
+    1. For small files (size < 5 MB), implement a simple upload.
+    2. For files bigger than 5 MB, perform a resumable upload in chunks of 5 MBs using file streams and the Drive resumable upload API.
+
+4. File updates: Use the update method of the API to add/remove parents and rename files. 
+
+5. File deletions (simple)
+6. Directory deletions (simple)

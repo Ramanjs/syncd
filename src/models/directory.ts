@@ -1,4 +1,4 @@
-import { DataTypes, type ModelDefined } from 'sequelize'
+import { DataTypes, type ModelDefined, type Optional } from 'sequelize'
 import sequelize from '../databaseConnection'
 import { statusConfig } from '../config/status'
 
@@ -11,8 +11,10 @@ interface DirectoryAttributes {
   driveId: string
 }
 
+type DirectoryCreationAttributes = Optional<DirectoryAttributes, 'driveId'>
+
 const Directory: ModelDefined<
-DirectoryAttributes, DirectoryAttributes
+DirectoryAttributes, DirectoryCreationAttributes
 > = sequelize.define('Directory', {
   path: {
     type: DataTypes.STRING,
@@ -54,5 +56,5 @@ Directory.belongsTo(Directory, {
   foreignKey: 'parent'
 })
 
-export type { DirectoryAttributes }
+export type { DirectoryAttributes, DirectoryCreationAttributes }
 export default Directory

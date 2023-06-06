@@ -2,7 +2,7 @@ import path from 'path'
 import { type Model } from 'sequelize'
 import { Op } from 'sequelize'
 import File, { type FileAttributes, type FileCreationAttributes } from './models/file'
-import Directory, { type DirectoryAttributes } from './models/directory'
+import Directory, { type DirectoryAttributes, type DirectoryCreationAttributes } from './models/directory'
 import type { FileUpdationAttributes } from './models/fileUpdation'
 import { statusConfig } from './config/status'
 import { stat, opendir } from 'fs/promises'
@@ -13,10 +13,10 @@ class SyncdRepository {
   workdir: string
   syncddir: string
   files: Array<Model<FileAttributes, FileCreationAttributes>>
-  directories: Array<Model<DirectoryAttributes, DirectoryAttributes>>
+  directories: Array<Model<DirectoryAttributes, DirectoryCreationAttributes>>
   fileAdditions: FileCreationAttributes[]
   fileDeletions: FileAttributes[]
-  directoryAdditions: DirectoryAttributes[]
+  directoryAdditions: DirectoryCreationAttributes[]
   directoryDeletions: DirectoryAttributes[]
   fileUpdations: FileUpdationAttributes[]
 

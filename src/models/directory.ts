@@ -8,6 +8,7 @@ interface DirectoryAttributes {
   lastChanged: Date
   parent: string
   status: string
+  driveId: string
 }
 
 const Directory: ModelDefined<

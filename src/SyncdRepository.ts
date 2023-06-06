@@ -36,6 +36,10 @@ class SyncdRepository {
     this.files = await File.findAll()
     this.directories = await Directory.findAll()
 
+    // remove root directory
+    const index = this.directories.findIndex((directory) => directory.dataValues.path === '.')
+    this.directories.splice(index, 1)
+
     for (const directory of this.directories) {
       this.directoryDeletions.push({
         ...directory.dataValues

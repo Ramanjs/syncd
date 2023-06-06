@@ -25,6 +25,13 @@ async function init (repo: string): Promise<string | null | undefined> {
 async function push (repo: SyncdRepository): Promise<void> {
   const repoName = path.basename(path.resolve(repo.workdir))
   const repoFolderId = await init(repoName)
+  await Directory.update({
+    driveId: String(repoFolderId)
+  }, {
+    where: {
+      path: '.'
+    }
+  })
   console.log(repoFolderId)
 }
 

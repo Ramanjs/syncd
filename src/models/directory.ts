@@ -41,6 +41,9 @@ DirectoryAttributes, DirectoryAttributes
       statusConfig.PENDING_UPDATE,
       statusConfig.DONE
     )
+  },
+  driveId: {
+    type: DataTypes.STRING
   }
 }, {
   timestamps: false

@@ -12,7 +12,7 @@ A CLI tool to sync your local directory with Google Drive.
 
 - [ ] Research CLI prettifying libraries
 
-- [ ] Define features and options to support
+- [x] Define features and options to support
 
 - [ ] Define and write business logic
     - [x] Define logic for local diffing
@@ -32,18 +32,66 @@ A CLI tool to sync your local directory with Google Drive.
 
 ## SQLite Schema 
 
-Directory schema:
+**Directory schema**:
+
 `path`: string, unique, primary key: includes directory name
+
 `lastModified`: Timestamp
+
 `lastChanged`: Timestamp
+
 `parent`: string, self-referential foreign key: `path` of parent directory
 
-File schema:
+**File schema**:
+
 `name`: string
+
 `hash`: string
+
 `lastModified`: Timestamp
+
 `lastChanged`: Timestamp
+
 `parent`: string: foreign key to Directory table
+
+## Supported features
+
+1. Backup any local directory to Google Drive on command or automatically (schedule a regular backup)
+2. Pull a backed up repository from Drive to your local machine
+3. Watch for changes to repository on Drive ?? Do we want a single source of truth or multiple? NOT CLEAR. If for instance we support multiple sources of truth then it will be pretty similar to git and GitHub.
+4. In order to justify usage of Webhooks and reverse tunneling, we NEED to support pulling a repo and watching for any changes.
+
+Initialization of repository on local computer and drive needs to be defined in more detail.
+
+### Initialization
+
+**When creating a new repository**:
+A local directory can be initialized by providing the path to that directory and the path to the Drive authentication credentials file.
+The `init` command should login the user using the OAuth consent screen, initialize the local SQLite database and create a folder on Drive with the same name as the provided argument.
+
+**When pulling/cloning an existing repository from Drive**:
+We could `clone` an existing repository when provided with the drive `id` of that folder. Following that, we could internally execute a `pull` command that fetches all the content inside that folder.
+
+### Commands supported
+
+#### `syncd init`
+
+#### `syncd status`
+
+Check the health of the repository.
+
+Possible damages a repo can take:
+1. Some local files have not been backed up or failed to upload during previous backup.
+   * Check if any file or directory in the database has a `PENDING` status.
+2. Database file missing / Credentials file missing.
+3. Folder gets deleted from drive.
+4. Conflict in local tree structure and Drive.
+
+#### `syncd clone`
+
+#### `syncd push`
+
+#### `syncd pull`
 
 ## Business logic
 

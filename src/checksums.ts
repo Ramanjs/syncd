@@ -12,13 +12,13 @@ async function hashFile (file: FileCreationAttributes): Promise<void> {
   pool.runTask(fileContent, (err: Error | null, result: Uint8Array | null) => {
     if (err != null) console.log(err)
     if (result != null) file.hash = Buffer.from(result).toString('hex')
-    console.log(file)
   })
 }
 
-function hashAllFiles (repo: SyncdRepository): void {
+function hashAllFiles (repo: SyncdRepository, onCloseCallback: any): void {
   pool.setNumFiles(repo.fileAdditions.length)
   pool.setRepo(repo)
+  pool.setOnCloseCallback(onCloseCallback)
   for (const file of repo.fileAdditions) {
     void hashFile(file)
   }

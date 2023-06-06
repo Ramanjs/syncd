@@ -33,6 +33,7 @@ export default class WorkerPool extends EventEmitter {
   freeWorkers: Array<Worker & AsyncResourceWorker>
   tasks: Array<{ task: Buffer, callback: hashCallback }>
   repo: SyncdRepository | null
+  onCloseCallback: any
 
   constructor (numThreads: number, workerFile: string) {
     super()
@@ -60,8 +61,7 @@ export default class WorkerPool extends EventEmitter {
 
       if (this.numFiles === this.filesProcessed) {
         console.log('stopping worker pool')
-        this.close()
-        void this.repo?.saveToDB()
+        void this.cleanUp()
       }
     })
   }
@@ -72,6 +72,10 @@ export default class WorkerPool extends EventEmitter {
 
   setRepo (repo: SyncdRepository): void {
     this.repo = repo
+  }
+
+  setOnCloseCallback (onCloseCallback: any): void {
+    this.onCloseCallback = onCloseCallback
   }
 
   addNewWorker (): void {
@@ -115,5 +119,11 @@ export default class WorkerPool extends EventEmitter {
 
   close (): void {
     for (const worker of this.workers) void worker.terminate()
+  }
+
+  async cleanUp (): Promise<void> {
+    this.close()
+    await this.repo?.saveToDB()
+    void this.onCloseCallback(this.repo)
   }
 }

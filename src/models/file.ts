@@ -11,9 +11,10 @@ interface FileAttributes {
   lastChanged: Date
   parent: string
   status: string
+  driveId: string
 }
 
-type FileCreationAttributes = Optional<FileAttributes, 'id'>
+type FileCreationAttributes = Optional<FileAttributes, 'id' | 'driveId'>
 
 const File: ModelDefined<
 FileAttributes, FileCreationAttributes
@@ -51,6 +52,9 @@ FileAttributes, FileCreationAttributes
       statusConfig.PENDING_UPDATE,
       statusConfig.DONE
     )
+  },
+  driveId: {
+    type: DataTypes.STRING
   }
 }, {
   timestamps: false

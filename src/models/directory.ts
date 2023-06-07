@@ -53,6 +53,7 @@ DirectoryAttributes, DirectoryCreationAttributes
 })
 
 Directory.belongsTo(Directory, {
+  as: 'Parent',
   foreignKey: 'parent'
 })
 

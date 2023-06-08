@@ -1,5 +1,5 @@
 import authorize from './auth/authClient'
-import { google, type drive_v3 } from 'googleapis'
+import { type drive_v3, google } from 'googleapis'
 import path from 'path'
 import Directory, { type DirectoryAttributes, type DirectoryCreationAttributes } from './models/directory'
 import type SyncdRepository from './SyncdRepository'
@@ -8,6 +8,7 @@ import { createReadStream } from 'fs'
 import { type Model, Op } from 'sequelize'
 import { statusConfig } from './config/status'
 import File, { type FileAttributes, type FileCreationAttributes } from './models/file'
+import FileUpdation, { type FileUpdationAttributes, type FileUpdationCreationAttributes } from './models/fileUpdation'
 
 async function getNewDirectory (): Promise<Model<DirectoryAttributes, DirectoryCreationAttributes
 > | null> {
@@ -29,11 +30,29 @@ async function getNewDirectory (): Promise<Model<DirectoryAttributes, DirectoryC
   return newDirectory
 }
 
+async function getDeletedDirectory (): Promise<Model<DirectoryAttributes, DirectoryCreationAttributes> | null> {
+  const oldDirectory = await Directory.findOne({
+    where: {
+      status: statusConfig.PENDING_DELETION
+    }
+  })
+
+  return oldDirectory
+}
+
 async function saveDirectoryDriveId (directoryPath: string, fileId: string): Promise<void> {
   await Directory.update({
     driveId: fileId,
     status: statusConfig.DONE
   }, {
+    where: {
+      path: directoryPath
+    }
+  })
+}
+
+async function saveDirectoryDeletion (directoryPath: string): Promise<void> {
+  await Directory.destroy({
     where: {
       path: directoryPath
     }
@@ -53,6 +72,16 @@ async function getNewFile (): Promise<Model<FileAttributes, FileCreationAttribut
   return newFile
 }
 
+async function getDeletedFile (): Promise<Model<FileAttributes, FileCreationAttributes> | null> {
+  const oldFile = await File.findOne({
+    where: {
+      status: statusConfig.PENDING_DELETION
+    }
+  })
+
+  return oldFile
+}
+
 async function saveFileDriveId (fileId: number, fileDriveId: string): Promise<void> {
   await File.update({
     driveId: fileDriveId,
@@ -64,26 +93,49 @@ async function saveFileDriveId (fileId: number, fileDriveId: string): Promise<vo
   })
 }
 
-async function init (repo: string, drive: drive_v3.Drive): Promise<void> {
-  try {
-    const root = await Directory.findOne({
-      where: {
-        path: '.'
-      }
-    })
-    if (root?.dataValues.driveId == null) {
-      const folderId = await createFolder(repo, null, drive)
-      await Directory.update({
-        driveId: String(folderId)
-      }, {
-        where: {
-          path: '.'
-        }
-      })
+async function saveFileDeletion (fileId: number): Promise<void> {
+  await File.destroy({
+    where: {
+      id: fileId
     }
-  } catch (err) {
-    console.log(err)
-  }
+  })
+}
+
+async function getNewFileUpdation (): Promise<Model<FileUpdationAttributes, FileUpdationCreationAttributes> | null> {
+  const newFileUpdate = await FileUpdation.findOne()
+  return newFileUpdate
+}
+
+async function saveFileUpdation (fileId: number, newName: string, newParent: string): Promise<void> {
+  await FileUpdation.destroy({
+    where: {
+      id: fileId
+    }
+  })
+  await File.update({
+    name: newName,
+    parent: newParent,
+    status: statusConfig.DONE
+  }, {
+    where: {
+      id: fileId
+    }
+  })
+}
+
+async function getDirectoryDriveId (directoryPath: string): Promise<string> {
+  const directory = await Directory.findOne({
+    where: {
+      path: directoryPath
+    }
+  })
+
+  return String(directory?.dataValues.driveId)
+}
+
+async function getFileDriveId (fileId: number): Promise<string> {
+  const file = await File.findByPk(fileId)
+  return String(file?.dataValues.driveId)
 }
 
 async function createFolder (name: string, parentDriveId: string | null, drive: drive_v3.Drive): Promise<string | null | undefined> {
@@ -130,23 +182,23 @@ async function createFile (name: string, parent: string, parentDriveId: string, 
 
 // }
 
-// async function updateFile (fileId: string, newName: string, newParentDriveId: string, oldParentDriveId: string, drive: drive_v3.Drive): Promise<void> {
-// await drive.files.update({
-// // @ts-expect-error ts gone wild
-// fileId,
-// addParents: [newParentDriveId],
-// removeParents: [oldParentDriveId],
-// requestBody: {
-// name: newName
-// }
-// })
-// }
+async function updateFile (fileId: string, newName: string, newParentDriveId: string, oldParentDriveId: string, drive: drive_v3.Drive): Promise<void> {
+  await drive.files.update({
+    // @ts-expect-error ts gone wild
+    fileId,
+    addParents: [newParentDriveId],
+    removeParents: [oldParentDriveId],
+    requestBody: {
+      name: newName
+    }
+  })
+}
 
-// async function deleteFile (fileId: string, drive: drive_v3.Drive): Promise<void> {
-// await drive.files.delete({
-// fileId
-// })
-// }
+async function deleteFile (fileId: string, drive: drive_v3.Drive): Promise<void> {
+  await drive.files.delete({
+    fileId
+  })
+}
 
 async function pushDirectoryAdditions (drive: drive_v3.Drive): Promise<void> {
   let newDirectory = await getNewDirectory()
@@ -161,7 +213,12 @@ async function pushDirectoryAdditions (drive: drive_v3.Drive): Promise<void> {
 }
 
 async function pushDirectoryDeletions (drive: drive_v3.Drive): Promise<void> {
-
+  let oldDirectory = await getDeletedDirectory()
+  while (oldDirectory != null) {
+    await deleteFile(oldDirectory.dataValues.driveId, drive)
+    await saveDirectoryDeletion(oldDirectory.dataValues.path)
+    oldDirectory = await getDeletedDirectory()
+  }
 }
 
 async function pushFileAdditions (drive: drive_v3.Drive): Promise<void> {
@@ -174,13 +231,48 @@ async function pushFileAdditions (drive: drive_v3.Drive): Promise<void> {
   }
 }
 
-// async function pushFileUpdations (): Promise<void> {
+async function pushFileUpdations (drive: drive_v3.Drive): Promise<void> {
+  let newFileUpdate = await getNewFileUpdation()
+  while (newFileUpdate != null) {
+    const oldParentDriveId = await getDirectoryDriveId(newFileUpdate.dataValues.oldParent)
+    const newParentDriveId = await getDirectoryDriveId(newFileUpdate.dataValues.newParent)
+    const fileDriveId = await getFileDriveId(newFileUpdate.dataValues.id)
+    await updateFile(fileDriveId, newFileUpdate.dataValues.newName, newParentDriveId, oldParentDriveId, drive)
+    await saveFileUpdation(newFileUpdate.dataValues.id, newFileUpdate.dataValues.newName, newFileUpdate.dataValues.newParent)
+    newFileUpdate = await getNewFileUpdation()
+  }
+}
 
-// }
+async function pushFileDeletions (drive: drive_v3.Drive): Promise<void> {
+  let oldFile = await getDeletedFile()
+  while (oldFile != null) {
+    await deleteFile(oldFile.dataValues.driveId, drive)
+    await saveFileDeletion(oldFile.dataValues.id)
+    oldFile = await getDeletedFile()
+  }
+}
 
-// async function pushFileDeletions (): Promise<void> {
-
-// }
+async function init (repo: string, drive: drive_v3.Drive): Promise<void> {
+  try {
+    const root = await Directory.findOne({
+      where: {
+        path: '.'
+      }
+    })
+    if (root?.dataValues.driveId == null) {
+      const folderId = await createFolder(repo, null, drive)
+      await Directory.update({
+        driveId: String(folderId)
+      }, {
+        where: {
+          path: '.'
+        }
+      })
+    }
+  } catch (err) {
+    console.log(err)
+  }
+}
 
 async function push (repo: SyncdRepository): Promise<void> {
   const repoName = path.basename(path.resolve(repo.workdir))
@@ -189,8 +281,9 @@ async function push (repo: SyncdRepository): Promise<void> {
   await init(repoName, drive)
   await pushDirectoryAdditions(drive)
   await pushFileAdditions(drive)
-  // const newFile = await getNewFile()
-  // console.log(newFile)
+  await pushFileUpdations(drive)
+  await pushFileDeletions(drive)
+  await pushDirectoryDeletions(drive)
 }
 
 export { init, push }

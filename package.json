@@ -1,13 +1,16 @@
 {
   "name": "syncd",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "A CLI tool to sync your local directory with Google Drive",
-  "main": "index.js",
+  "main": "dist/index.js",
   "private": "true",
   "scripts": {
     "start": "node ./dist/index.js",
-    "build": "tsc -p .",
+    "build": "rm -rf dist && tsc -p . && chmod +x ./dist/index.js",
     "dev": "nodemon ./src/index.ts"
+  },
+  "bin": {
+    "syncd": "./dist/index.js"
   },
   "keywords": [],
   "author": "",

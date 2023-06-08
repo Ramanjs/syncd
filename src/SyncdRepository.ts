@@ -3,7 +3,7 @@ import { type Model } from 'sequelize'
 import { Op } from 'sequelize'
 import File, { type FileAttributes, type FileCreationAttributes } from './models/file'
 import Directory, { type DirectoryAttributes, type DirectoryCreationAttributes } from './models/directory'
-import type { FileUpdationAttributes } from './models/fileUpdation'
+import type { FileUpdationCreationAttributes } from './models/fileUpdation'
 import { statusConfig } from './config/status'
 import { stat, opendir } from 'fs/promises'
 import sequelize from './databaseConnection'
@@ -18,7 +18,7 @@ class SyncdRepository {
   fileDeletions: FileAttributes[]
   directoryAdditions: DirectoryCreationAttributes[]
   directoryDeletions: DirectoryAttributes[]
-  fileUpdations: FileUpdationAttributes[]
+  fileUpdations: FileUpdationCreationAttributes[]
 
   constructor (repopath: string) {
     this.workdir = repopath
@@ -62,6 +62,7 @@ class SyncdRepository {
       const newFile = file
       if (oldFile != null) {
         this.fileUpdations.push({
+          id: oldFile.id,
           oldName: oldFile.name,
           oldParent: oldFile.parent,
           newName: newFile.name,

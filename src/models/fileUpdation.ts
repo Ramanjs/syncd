@@ -1,7 +1,9 @@
-import { DataTypes, type ModelDefined } from 'sequelize'
+import { DataTypes, type ModelDefined, type Optional } from 'sequelize'
 import sequelize from '../databaseConnection'
+import File from './file'
 
 interface FileUpdationAttributes {
+  id: number
   oldName: string
   oldParent: string
   newName: string
@@ -10,8 +12,10 @@ interface FileUpdationAttributes {
   lastChanged: Date
 }
 
+type FileUpdationCreationAttributes = Optional<FileUpdationAttributes, 'id'>
+
 const FileUpdation: ModelDefined<
-FileUpdationAttributes, FileUpdationAttributes
+FileUpdationAttributes, FileUpdationCreationAttributes
 > = sequelize.define('FileUpdation', {
   oldName: {
     type: DataTypes.STRING,
@@ -53,5 +57,7 @@ FileUpdationAttributes, FileUpdationAttributes
   timestamps: false
 })
 
-export type { FileUpdationAttributes }
+FileUpdation.hasOne(File)
+
+export type { FileUpdationAttributes, FileUpdationCreationAttributes }
 export default FileUpdation

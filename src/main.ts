@@ -1,7 +1,8 @@
+#!/usr/bin/env node
+
 import SyncdRepository from './SyncdRepository'
 import hashAllFiles from './checksums'
 import sequelize from './databaseConnection'
-import authorize from './auth/authClient'
 import { push } from './drive'
 
 const repo = new SyncdRepository('.')
@@ -18,4 +19,3 @@ async function main (): Promise<void> {
 }
 
 void main()
-void authorize()

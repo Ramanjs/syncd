@@ -3,17 +3,18 @@ import path from 'path'
 import authorize from './auth/authClient'
 import { google } from 'googleapis'
 import { Command } from 'commander'
-import { getPushListr, init, push } from './drive'
+import { getPushListr, init } from './drive'
 import getSequelizeConnection from './databaseConnection'
 import { checkIfUploadPending, repoFind } from './utils'
 import getDirectoryModel from './models/directory'
 import getFileModel from './models/file'
 import hashAllFiles from './checksums'
+import { getInitListr } from './cliListrs'
 const program = new Command()
 
 program
   .name('syncd')
-  .description('CLI to backup your local directory to Google Drive')
+  .description('a cli tool to backup your local directory to Google Drive')
   .version('0.1.0')
 
 program
@@ -22,14 +23,13 @@ program
   .argument('<path-to-credentials>', 'path to your credentials file, must be in json format')
   .argument('[path-to-directory]', 'path of directory you want to initialize', '.')
   .action(async (pathToCredentials, pathToDirectory) => {
-    const repo = new SyncdRepository(pathToDirectory, true)
-    const sequelize = await repo.createRepo(pathToCredentials)
-    const credentialsPath = path.join(repo.syncddir, 'credentials.json')
-    const tokenPath = path.join(repo.syncddir, 'token.json')
-    const authClient = await authorize(credentialsPath, tokenPath)
-    const drive = google.drive({ version: 'v3', auth: authClient })
-    await init(sequelize, repo.worktree, drive)
-    process.exit(0)
+    const initListr = getInitListr(pathToCredentials, pathToDirectory)
+    try {
+      await initListr.run()
+      process.exit(0)
+    } catch (err) {
+      console.log(err)
+    }
   })
 
 program
@@ -67,12 +67,12 @@ program
     const authClient = await authorize(credentialsPath, tokenPath)
     const drive = google.drive({ version: 'v3', auth: authClient })
     const pushListr = getPushListr(sequelize, drive)
-    pushListr.run()
-      .then(() => {
-        process.exit(0)
-      })
-      .catch(err => { console.log(err) })
-    // await push(sequelize, drive)
+    try {
+      await pushListr.run()
+      process.exit(0)
+    } catch (err) {
+      console.log(err)
+    }
   })
 
 export default program

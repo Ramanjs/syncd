@@ -68,5 +68,5 @@ function getFileModel (sequelize: Sequelize): File {
   return File
 }
 
-export type { FileAttributes, FileCreationAttributes }
+export type { File, FileAttributes, FileCreationAttributes }
 export default getFileModel

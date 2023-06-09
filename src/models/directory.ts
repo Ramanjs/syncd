@@ -60,5 +60,5 @@ function getDirectoryModel (sequelize: Sequelize): Directory {
   return Directory
 }
 
-export type { DirectoryAttributes, DirectoryCreationAttributes }
+export type { Directory, DirectoryAttributes, DirectoryCreationAttributes }
 export default getDirectoryModel

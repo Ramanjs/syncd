@@ -63,5 +63,5 @@ function getFileUpdationModel (sequelize: Sequelize): FileUpdation {
   return FileUpdation
 }
 
-export type { FileUpdationAttributes, FileUpdationCreationAttributes }
+export type { FileUpdation, FileUpdationAttributes, FileUpdationCreationAttributes }
 export default getFileUpdationModel

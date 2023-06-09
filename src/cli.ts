@@ -9,7 +9,7 @@ import { checkIfUploadPending, repoFind } from './utils'
 import getDirectoryModel from './models/directory'
 import getFileModel from './models/file'
 import hashAllFiles from './checksums'
-import { getInitListr } from './cliListrs'
+import { getInitListr, getStatusListr } from './cliListrs'
 const program = new Command()
 
 program
@@ -26,34 +26,23 @@ program
     const initListr = getInitListr(pathToCredentials, pathToDirectory)
     try {
       await initListr.run()
-      process.exit(0)
     } catch (err) {
-      console.log(err)
+      console.error(err)
     }
+    process.exit(0)
   })
 
 program
   .command('status')
   .description('health check of the repo, returns if previous backup was successful or if there are any changes in the repository contents')
   .action(async () => {
-    const repo = repoFind(process.cwd())
-    const sequelize = getSequelizeConnection(path.join(repo.syncddir, 'db.sqlite'))
-    const DirectoryModel = getDirectoryModel(sequelize)
-    const FileModel = getFileModel(sequelize)
-    const isPending = await checkIfUploadPending(DirectoryModel, FileModel)
-    if (isPending) {
-      console.log('There are pending uploads in your repository. Please run `syncd push` to publish them to Drive')
-      process.exit(0)
-    } else {
-      console.log('Scanning folders for changes...')
-      await repo.loadDatabase()
-      await repo.walkWorkdir(repo.worktree)
-      if (repo.fileAdditions.length > 0) {
-        hashAllFiles(repo)
-      } else {
-        await repo.saveToDB()
-      }
+    const statusListr = getStatusListr()
+    try {
+      await statusListr.run()
+    } catch (err) {
+      console.error(err)
     }
+    process.exit(0)
   })
 
 program
@@ -71,7 +60,7 @@ program
       await pushListr.run()
       process.exit(0)
     } catch (err) {
-      console.log(err)
+      console.error(err)
     }
   })
 

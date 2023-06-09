@@ -19,15 +19,19 @@
     "@google-cloud/local-auth": "^2.1.1",
     "commander": "^10.0.1",
     "googleapis": "^105.0.0",
+    "listr": "^0.14.3",
     "mime-types": "^2.1.35",
     "sequelize": "^6.31.1",
-    "sqlite3": "^5.1.6"
+    "sqlite3": "^5.1.6",
+    "zen-observable": "^0.10.0"
   },
   "devDependencies": {
     "@commander-js/extra-typings": "^10.0.3",
     "@types/gapi": "^0.0.43",
+    "@types/listr": "^0.14.4",
     "@types/mime-types": "^2.1.1",
     "@types/node": "^18.11.18",
+    "@types/zen-observable": "^0.8.3",
     "@typescript-eslint/eslint-plugin": "^5.59.8",
     "eslint": "^8.41.0",
     "eslint-config-standard-with-typescript": "^34.0.1",

@@ -1,8 +1,12 @@
 import { Sequelize } from 'sequelize'
 
-const sequelize = new Sequelize({
-  dialect: 'sqlite',
-  storage: './db.sqlite'
-})
+function getSequelizeConnection (dbPath: string): Sequelize {
+  const sequelize = new Sequelize({
+    dialect: 'sqlite',
+    storage: dbPath
+  })
 
-export default sequelize
+  return sequelize
+}
+
+export default getSequelizeConnection

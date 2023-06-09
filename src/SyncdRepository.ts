@@ -1,16 +1,15 @@
 import path from 'path'
-import { type Model } from 'sequelize'
-import { Op } from 'sequelize'
-import File, { type FileAttributes, type FileCreationAttributes } from './models/file'
-import Directory, { type DirectoryAttributes, type DirectoryCreationAttributes } from './models/directory'
-import type { FileUpdationCreationAttributes } from './models/fileUpdation'
+import { Op, type Sequelize, type Model } from 'sequelize'
+import getFileModel, { type FileAttributes, type FileCreationAttributes } from './models/file'
+import getDirectoryModel, { type DirectoryAttributes, type DirectoryCreationAttributes } from './models/directory'
+import getFileUpdationModel, { type FileUpdationCreationAttributes } from './models/fileUpdation'
 import { statusConfig } from './config/status'
-import { stat, opendir } from 'fs/promises'
-import sequelize from './databaseConnection'
-import FileUpdation from './models/fileUpdation'
+import { stat, opendir, copyFile } from 'fs/promises'
+import getSequelizeConnection from './databaseConnection'
+import { existsSync, mkdirSync, statSync } from 'fs'
 
 class SyncdRepository {
-  workdir: string
+  worktree: string
   syncddir: string
   files: Array<Model<FileAttributes, FileCreationAttributes>>
   directories: Array<Model<DirectoryAttributes, DirectoryCreationAttributes>>
@@ -20,9 +19,14 @@ class SyncdRepository {
   directoryDeletions: DirectoryAttributes[]
   fileUpdations: FileUpdationCreationAttributes[]
 
-  constructor (repopath: string) {
-    this.workdir = repopath
-    this.syncddir = path.join(repopath, '.syncd')
+  constructor (repopath: string, force = false) {
+    this.worktree = path.resolve(repopath)
+    this.syncddir = path.join(this.worktree, '.syncd')
+
+    if (!(force || existsSync(this.syncddir))) {
+      throw Error('Not a syncd repository')
+    }
+
     this.files = []
     this.directories = []
     this.fileAdditions = []
@@ -32,9 +36,49 @@ class SyncdRepository {
     this.fileUpdations = []
   }
 
-  async loadDatabase (): Promise<void> {
-    this.files = await File.findAll()
-    this.directories = await Directory.findAll()
+  async syncDB (sequelize: Sequelize): Promise<void> {
+    const DirectoryModel = getDirectoryModel(sequelize)
+    const FileModel = getFileModel(sequelize)
+    const FileUpdationModel = getFileUpdationModel(sequelize)
+
+    await sequelize.sync()
+  }
+
+  async createRepo (pathToCredentials: string): Promise<Sequelize> {
+    if (!(existsSync(this.worktree) && statSync(this.worktree).isDirectory())) {
+      throw Error(`${this.worktree} is not a directory`)
+    }
+    if (existsSync(this.syncddir)) {
+      throw Error(`${this.worktree} is already an existing syncd repository`)
+    }
+
+    mkdirSync(this.syncddir)
+    const sequelize = getSequelizeConnection(path.join(this.syncddir, 'db.sqlite'))
+    await this.syncDB(sequelize)
+    await sequelize.sync()
+
+    const stats = await stat(this.worktree)
+
+    const DirectoryModel = getDirectoryModel(sequelize)
+    await DirectoryModel.create({
+      path: this.worktree,
+      lastModified: stats.mtime,
+      lastChanged: stats.ctime,
+      status: statusConfig.DONE,
+      parent: this.worktree
+    })
+
+    await copyFile(pathToCredentials, path.join(this.syncddir, 'credentials.json'))
+
+    return sequelize
+  }
+
+  async loadDatabase (sequelize: Sequelize): Promise<void> {
+    const FileModel = getFileModel(sequelize)
+    const DirectoryModel = getDirectoryModel(sequelize)
+
+    this.files = await FileModel.findAll()
+    this.directories = await DirectoryModel.findAll()
 
     // remove root directory
     const index = this.directories.findIndex((directory) => directory.dataValues.path === '.')
@@ -155,29 +199,18 @@ class SyncdRepository {
     }
   }
 
-  async setupDB (): Promise<void> {
-    const directories = await Directory.findAll()
-    if (directories.length === 0) {
-      const stats = await stat('.')
-      await Directory.create({
-        path: '.',
-        lastModified: stats.mtime,
-        lastChanged: stats.ctime,
-        parent: '.',
-        status: statusConfig.DONE
-      })
-    }
-  }
+  async saveToDB (sequelize: Sequelize): Promise<void> {
+    const FileModel = getFileModel(sequelize)
+    const DirectoryModel = getDirectoryModel(sequelize)
+    const FileUpdationModel = getFileUpdationModel(sequelize)
 
-  async saveToDB (): Promise<void> {
     this.filterUpdatedFiles()
-    await sequelize.sync()
-    await this.setupDB()
-    await Directory.bulkCreate(this.directoryAdditions, {
+    await getSequelizeConnection(path.join(this.syncddir, 'db.sqlite')).sync()
+    await DirectoryModel.bulkCreate(this.directoryAdditions, {
       validate: true
     })
     for (const directory of this.directoryDeletions) {
-      await Directory.update({
+      await DirectoryModel.update({
         status: statusConfig.PENDING_DELETION
       }, {
         where: {
@@ -185,11 +218,11 @@ class SyncdRepository {
         }
       })
     }
-    await File.bulkCreate(this.fileAdditions, {
+    await FileModel.bulkCreate(this.fileAdditions, {
       validate: true
     })
     for (const file of this.fileDeletions) {
-      await File.update({
+      await FileModel.update({
         status: statusConfig.PENDING_DELETION
       }, {
         where: {
@@ -197,11 +230,11 @@ class SyncdRepository {
         }
       })
     }
-    await FileUpdation.bulkCreate(this.fileUpdations, {
+    await FileUpdationModel.bulkCreate(this.fileUpdations, {
       validate: true
     })
     for (const fileUpdate of this.fileUpdations) {
-      await File.update({
+      await FileModel.update({
         status: statusConfig.PENDING_UPDATE
       }, {
         where: {

@@ -3,7 +3,8 @@ import { Sequelize } from 'sequelize'
 function getSequelizeConnection (dbPath: string): Sequelize {
   const sequelize = new Sequelize({
     dialect: 'sqlite',
-    storage: dbPath
+    storage: dbPath,
+    logging: false
   })
 
   return sequelize

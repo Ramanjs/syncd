@@ -50,4 +50,8 @@ async function checkIfUploadPending (Directory: Directory, File: File): Promise<
   return false
 }
 
-export { repoFind, checkIfUploadPending }
+function getRelativePath (root: string, filePath: string): string {
+  return filePath.slice(root.length + 1)
+}
+
+export { repoFind, checkIfUploadPending, getRelativePath }

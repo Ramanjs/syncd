@@ -15,10 +15,9 @@ async function hashFile (file: FileCreationAttributes): Promise<void> {
   })
 }
 
-function hashAllFiles (repo: SyncdRepository, onCloseCallback: any): void {
+function hashAllFiles (repo: SyncdRepository): void {
   pool.setNumFiles(repo.fileAdditions.length)
   pool.setRepo(repo)
-  pool.setOnCloseCallback(onCloseCallback)
   for (const file of repo.fileAdditions) {
     void hashFile(file)
   }

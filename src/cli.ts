@@ -3,7 +3,7 @@ import path from 'path'
 import authorize from './auth/authClient'
 import { google } from 'googleapis'
 import { Command } from 'commander'
-import { init, push } from './drive'
+import { getPushListr, init, push } from './drive'
 import getSequelizeConnection from './databaseConnection'
 import { checkIfUploadPending, repoFind } from './utils'
 import getDirectoryModel from './models/directory'
@@ -66,8 +66,13 @@ program
     const tokenPath = path.join(repo.syncddir, 'token.json')
     const authClient = await authorize(credentialsPath, tokenPath)
     const drive = google.drive({ version: 'v3', auth: authClient })
-    await push(sequelize, drive)
-    process.exit(0)
+    const pushListr = getPushListr(sequelize, drive)
+    pushListr.run()
+      .then(() => {
+        process.exit(0)
+      })
+      .catch(err => { console.log(err) })
+    // await push(sequelize, drive)
   })
 
 export default program

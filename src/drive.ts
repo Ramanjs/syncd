@@ -7,6 +7,10 @@ import { Op, type Model, type Sequelize } from 'sequelize'
 import { statusConfig } from './config/status'
 import getFileModel, { type File, type FileAttributes, type FileCreationAttributes } from './models/file'
 import getFileUpdationModel, { type FileUpdation, type FileUpdationAttributes, type FileUpdationCreationAttributes } from './models/fileUpdation'
+import Listr from 'listr'
+import Observable from 'zen-observable'
+import { type Observer } from 'rxjs'
+// import { Observable } from 'rxjs'
 
 async function getNewDirectory (Directory: Directory): Promise<Model<DirectoryAttributes, DirectoryCreationAttributes
 > | null> {
@@ -198,16 +202,18 @@ async function deleteFile (fileId: string, drive: drive_v3.Drive): Promise<void>
   })
 }
 
-async function pushDirectoryAdditions (Directory: Directory, drive: drive_v3.Drive): Promise<void> {
+async function pushDirectoryAdditions (Directory: Directory, drive: drive_v3.Drive, observer: Observer<any>): Promise<void> {
   let newDirectory = await getNewDirectory(Directory)
   while (newDirectory != null) {
     const directoryName = path.basename(newDirectory.dataValues.path)
+    observer.next(directoryName)
     // @ts-expect-error idk how to implement eager loading in ts
     const parentDriveId = newDirectory.dataValues.Parent.dataValues.driveId
     const directoryId = await createFolder(directoryName, parentDriveId, drive)
     await saveDirectoryDriveId(Directory, newDirectory.dataValues.path, String(directoryId))
     newDirectory = await getNewDirectory(Directory)
   }
+  observer.complete()
 }
 
 async function pushDirectoryDeletions (Directory: Directory, drive: drive_v3.Drive): Promise<void> {
@@ -280,11 +286,31 @@ async function push (sequelize: Sequelize, drive: drive_v3.Drive): Promise<void>
   const FileModel = getFileModel(sequelize)
   const FileUpdationModel = getFileUpdationModel(sequelize)
 
-  await pushDirectoryAdditions(DirectoryModel, drive)
+  // await pushDirectoryAdditions(DirectoryModel, drive)
   await pushFileAdditions(FileModel, DirectoryModel, drive)
   await pushFileUpdations(FileUpdationModel, DirectoryModel, FileModel, drive)
   await pushFileDeletions(FileModel, drive)
   await pushDirectoryDeletions(DirectoryModel, drive)
 }
 
-export { init, push }
+function getPushListr (sequelize: Sequelize, drive: drive_v3.Drive): Listr {
+  const DirectoryModel = getDirectoryModel(sequelize)
+  const FileModel = getFileModel(sequelize)
+  const FileUpdationModel = getFileUpdationModel(sequelize)
+
+  // @ts-expect-error idk wtf is happening here
+  const pushListr = new Listr([
+    {
+      title: 'Creating new folders',
+      task: () => {
+        return new Observable(observer => {
+          void pushDirectoryAdditions(DirectoryModel, drive, observer)
+        })
+      }
+    }
+  ])
+
+  return pushListr
+}
+
+export { init, push, getPushListr }

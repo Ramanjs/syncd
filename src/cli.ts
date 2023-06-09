@@ -3,7 +3,9 @@ import path from 'path'
 import authorize from './auth/authClient'
 import { google } from 'googleapis'
 import { Command } from 'commander'
-import { init } from './drive'
+import { init, push } from './drive'
+import getSequelizeConnection from './databaseConnection'
+import { repoFind } from './utils'
 const program = new Command()
 
 program
@@ -24,6 +26,19 @@ program
     const authClient = await authorize(credentialsPath, tokenPath)
     const drive = google.drive({ version: 'v3', auth: authClient })
     await init(sequelize, repo.worktree, drive)
+  })
+
+program
+  .command('push')
+  .description('push repository\'s contents to Drive')
+  .action(async () => {
+    const repo = repoFind(process.cwd())
+    const sequelize = getSequelizeConnection(path.join(repo.syncddir, 'db.sqlite'))
+    const credentialsPath = path.join(repo.syncddir, 'credentials.json')
+    const tokenPath = path.join(repo.syncddir, 'token.json')
+    const authClient = await authorize(credentialsPath, tokenPath)
+    const drive = google.drive({ version: 'v3', auth: authClient })
+    await push(sequelize, drive)
   })
 
 export default program

@@ -73,15 +73,17 @@ class SyncdRepository {
     return sequelize
   }
 
-  async loadDatabase (sequelize: Sequelize): Promise<void> {
+  async loadDatabase (): Promise<void> {
+    const sequelize = getSequelizeConnection(path.join(this.syncddir, 'db.sqlite'))
     const FileModel = getFileModel(sequelize)
     const DirectoryModel = getDirectoryModel(sequelize)
+    await sequelize.sync()
 
     this.files = await FileModel.findAll()
     this.directories = await DirectoryModel.findAll()
 
     // remove root directory
-    const index = this.directories.findIndex((directory) => directory.dataValues.path === '.')
+    const index = this.directories.findIndex((directory) => directory.dataValues.path === directory.dataValues.parent)
     this.directories.splice(index, 1)
 
     for (const directory of this.directories) {
@@ -95,9 +97,6 @@ class SyncdRepository {
         ...file.dataValues
       })
     }
-
-    console.log(this.files)
-    console.log(this.directories)
   }
 
   filterUpdatedFiles (): void {
@@ -188,6 +187,9 @@ class SyncdRepository {
       for await (const dirent of dir) {
         if (dirent.isDirectory()) {
           const directoryPath = path.join(dirpath, dirent.name)
+          if (directoryPath === this.syncddir) {
+            return
+          }
           await this.handleDirectory(directoryPath, dirpath)
           await this.walkWorkdir(directoryPath)
         } else if (dirent.isFile()) {
@@ -199,13 +201,15 @@ class SyncdRepository {
     }
   }
 
-  async saveToDB (sequelize: Sequelize): Promise<void> {
+  async saveToDB (): Promise<void> {
+    const sequelize = getSequelizeConnection(path.join(this.syncddir, 'db.sqlite'))
     const FileModel = getFileModel(sequelize)
     const DirectoryModel = getDirectoryModel(sequelize)
     const FileUpdationModel = getFileUpdationModel(sequelize)
 
+    await sequelize.sync()
+
     this.filterUpdatedFiles()
-    await getSequelizeConnection(path.join(this.syncddir, 'db.sqlite')).sync()
     await DirectoryModel.bulkCreate(this.directoryAdditions, {
       validate: true
     })
@@ -244,6 +248,12 @@ class SyncdRepository {
           ]
         }
       })
+    }
+
+    if (this.fileAdditions.length === 0 && this.fileDeletions.length === 0 &&
+       this.directoryAdditions.length === 0 && this.directoryDeletions.length === 0 &&
+     this.fileUpdations.length === 0) {
+      console.log('No changes found. Repo backed up successfully.')
     }
   }
 }

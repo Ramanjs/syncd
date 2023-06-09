@@ -32,7 +32,7 @@ export default class WorkerPool extends EventEmitter {
   workers: Array<Worker & AsyncResourceWorker>
   freeWorkers: Array<Worker & AsyncResourceWorker>
   tasks: Array<{ task: Buffer, callback: hashCallback }>
-  repo: SyncdRepository | null
+  observer: any
 
   constructor (numThreads: number, workerFile: string) {
     super()
@@ -43,7 +43,7 @@ export default class WorkerPool extends EventEmitter {
     this.workers = []
     this.freeWorkers = []
     this.tasks = []
-    this.repo = null
+    this.observer = null
 
     for (let i = 0; i < numThreads; i++) { this.addNewWorker() }
 
@@ -69,8 +69,8 @@ export default class WorkerPool extends EventEmitter {
     this.numFiles = numFiles
   }
 
-  setRepo (repo: SyncdRepository): void {
-    this.repo = repo
+  setObserver (observer: any): void {
+    this.observer = observer
   }
 
   addNewWorker (): void {
@@ -118,6 +118,6 @@ export default class WorkerPool extends EventEmitter {
 
   async cleanUp (): Promise<void> {
     this.close()
-    await this.repo?.saveToDB()
+    this.observer.complete()
   }
 }

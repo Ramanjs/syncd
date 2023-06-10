@@ -1,11 +1,58 @@
-import { google } from 'googleapis'
+import { type drive_v3 } from 'googleapis'
 import axios from 'axios'
-import authorize from './auth/authClient'
 import { createReadStream, type ReadStream } from 'fs'
 import mime from 'mime-types'
 import { stat } from 'fs/promises'
+import { getRelativePath } from './utils'
 
-const CHUNK_SIZE = 5 * 1024 * 1024
+const CHUNK_SIZE = 1024 * 1024
+
+function getUploadProgress (path: string, progress: number, size: number): string {
+  let uploadProgress = path
+  uploadProgress += ' ['
+
+  for (let i = 0; i < size; i++) {
+    if (i < progress) {
+      uploadProgress += '█'
+    } else {
+      uploadProgress += '▁'
+    }
+  }
+
+  uploadProgress += ']'
+
+  return uploadProgress
+}
+
+async function getResumableUri (filePath: string, fileName: string, parentDriveId: string, accessToken: string, drive: drive_v3.Drive): Promise<string> {
+  const res = await drive.files.generateIds({
+    count: 1
+  })
+
+  const mimeType = mime.lookup(filePath) !== false ? String(mime.lookup(filePath)) : '[*/*]'
+  const fileId = (res.data.ids != null) ? res.data.ids[0] : ''
+  const metadata = {
+    id: fileId,
+    name: fileName
+  }
+  const contentLength = Buffer.byteLength(JSON.stringify(metadata))
+  const resumableUriRes = await axios
+    .post('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable',
+      metadata,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'X-Upload-Content-Type': mimeType,
+          'Content-Type': 'application/json; charset=UTF-8',
+          'Content-Length': contentLength
+        }
+      })
+
+  // @ts-expect-error wtf
+  const resumableUri = resumableUriRes.headers.get('Location')
+
+  return resumableUri
+}
 
 async function upload (resumableUri: string, chunk: ReadStream, accessToken: string, start: number, end: number, size: number): Promise<string> {
   const res = await axios
@@ -20,13 +67,20 @@ async function upload (resumableUri: string, chunk: ReadStream, accessToken: str
         validateStatus: status => (status === 308 || status === 200)
       })
 
+  if (res.status === 200) {
+    return res.data.id
+  }
   // @ts-expect-error wtf
   return res.headers.get('Range')
 }
 
-async function uploadFile (resumableUri: string, filePath: string, accessToken: string): Promise<void> {
+async function uploadFile (resumableUri: string, rootPath: string, filePath: string, accessToken: string, observer: any): Promise<string> {
   const size = (await stat(filePath)).size
+  let range
   let start = 0; let end = 0
+  const relativePath = getRelativePath(rootPath, filePath)
+  const bars = size / CHUNK_SIZE
+  let progress = 0
   while (true) {
     if (start + CHUNK_SIZE > size) {
       end = size - 1
@@ -40,7 +94,10 @@ async function uploadFile (resumableUri: string, filePath: string, accessToken: 
       end
     })
 
-    const range = await upload(resumableUri, stream, accessToken, start, end, size)
+    const uploadProgress = getUploadProgress(relativePath, progress, bars)
+    observer.next(uploadProgress)
+    range = await upload(resumableUri, stream, accessToken, start, end, size)
+    progress += 1
 
     if (end === size - 1) {
       break
@@ -48,45 +105,14 @@ async function uploadFile (resumableUri: string, filePath: string, accessToken: 
 
     start = Number(range.slice(range.lastIndexOf('-') + 1)) + 1
   }
+
+  return range
 }
 
-async function main (): Promise<void> {
-  try {
-    const client = await authorize('./credentials.json', '/home/raman/Documents/github-projects/syncd/src/auth/token.json')
-    const drive = google.drive({ version: 'v3', auth: client })
-
-    const res = await drive.files.generateIds({
-      count: 1
-    })
-
-    const filePath = './video.mp4'
-    const mimeType = mime.lookup(filePath) !== false ? String(mime.lookup(filePath)) : '[*/*]'
-    const accessToken = String(client.credentials.access_token)
-    const fileId = (res.data.ids != null) ? res.data.ids[0] : ''
-    const metadata = {
-      id: fileId,
-      name: 'hehe.mp4'
-    }
-    const contentLength = Buffer.byteLength(JSON.stringify(metadata))
-    const resumableUriRes = await axios
-      .post('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable',
-        metadata,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'X-Upload-Content-Type': mimeType,
-            'Content-Type': 'application/json; charset=UTF-8',
-            'Content-Length': contentLength
-          }
-        })
-
-    // @ts-expect-error wtf
-    const resumableUri = resumableUriRes.headers.get('Location')
-
-    await uploadFile(resumableUri, filePath, accessToken)
-  } catch (err: any) {
-    console.log(err)
-  }
+async function resumableUpload (rootPath: string, filePath: string, fileName: string, parentDriveId: string, accessToken: string, drive: drive_v3.Drive, observer: any): Promise<string> {
+  const resumableUri = await getResumableUri(filePath, fileName, parentDriveId, accessToken, drive)
+  const fileId = await uploadFile(resumableUri, rootPath, filePath, accessToken, observer)
+  return fileId
 }
 
-void main()
+export default resumableUpload

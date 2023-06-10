@@ -1,11 +1,12 @@
 import SyncdRepository from './SyncdRepository'
 import path from 'path'
 import authorize from './auth/authClient'
-import { google } from 'googleapis'
-import { init } from './drive'
+import { type drive_v3, google } from 'googleapis'
+import { init, pushDirectoryAdditions, pushFileAdditions, pushFileUpdations, pushFileDeletions, pushDirectoryDeletions } from './drive'
 import { checkIfUploadPending, repoFind } from './utils'
 import getDirectoryModel from './models/directory'
 import getFileModel from './models/file'
+import getFileUpdationModel from './models/fileUpdation'
 import getSequelizeConnection from './databaseConnection'
 import hashAllFiles from './checksums'
 import Listr from 'listr'
@@ -46,23 +47,22 @@ function getInitListr (pathToCredentials: string, pathToDirectory: string): List
 }
 
 function getStatusListr (): Listr {
-  let repo: SyncdRepository
+  const repo = repoFind(process.cwd())
+  const sequelize = getSequelizeConnection(path.join(repo.syncddir, 'db.sqlite'))
+  const DirectoryModel = getDirectoryModel(sequelize)
+  const FileModel = getFileModel(sequelize)
 
   // @ts-expect-error idk how to fix this
   const statusListr = new Listr([
     {
       title: 'Searching for pending operations',
       task: async (ctx) => {
-        repo = repoFind(process.cwd())
-        const sequelize = getSequelizeConnection(path.join(repo.syncddir, 'db.sqlite'))
-        const DirectoryModel = getDirectoryModel(sequelize)
-        const FileModel = getFileModel(sequelize)
         const isPending = await checkIfUploadPending(DirectoryModel, FileModel)
         ctx.isPending = isPending
 
-        if (isPending) {
-          console.log('There are pending uploads in your repository. Please run `syncd push` to publish them to Drive.')
-        }
+        // if (isPending) {
+        // console.log('There are pending uploads in your repository. Please run `syncd push` to publish them to Drive.')
+        // }
       }
     },
     {
@@ -98,4 +98,68 @@ function getStatusListr (): Listr {
   return statusListr
 }
 
-export { getInitListr, getStatusListr }
+function getPushListr (): Listr {
+  const repo = repoFind(process.cwd())
+  const sequelize = getSequelizeConnection(path.join(repo.syncddir, 'db.sqlite'))
+  const credentialsPath = path.join(repo.syncddir, 'credentials.json')
+  const tokenPath = path.join(repo.syncddir, 'token.json')
+
+  const DirectoryModel = getDirectoryModel(sequelize)
+  const FileModel = getFileModel(sequelize)
+  const FileUpdationModel = getFileUpdationModel(sequelize)
+  let drive: drive_v3.Drive
+
+  // @ts-expect-error idk wtf is happening here
+  const pushListr = new Listr([
+    {
+      title: 'Authorizing',
+      task: async () => {
+        const authClient = await authorize(credentialsPath, tokenPath)
+        drive = google.drive({ version: 'v3', auth: authClient })
+      }
+    },
+    {
+      title: 'Creating new folders',
+      task: () => {
+        return new Observable(observer => {
+          void pushDirectoryAdditions(DirectoryModel, drive, observer)
+        })
+      }
+    },
+    {
+      title: 'Uploading new files',
+      task: () => {
+        return new Observable(observer => {
+          void pushFileAdditions(FileModel, DirectoryModel, drive, repo.worktree, observer)
+        })
+      }
+    },
+    {
+      title: 'Updating file metadata (moving/renaming)',
+      task: () => {
+        return new Observable(observer => {
+          void pushFileUpdations(FileUpdationModel, DirectoryModel, FileModel, drive, repo.worktree, observer)
+        })
+      }
+    },
+    {
+      title: 'Delete old files',
+      task: () => {
+        return new Observable(observer => {
+          void pushFileDeletions(FileModel, drive, repo.worktree, observer)
+        })
+      }
+    },
+    {
+      title: 'Clean empty folders',
+      task: () => {
+        return new Observable(observer => {
+          void pushDirectoryDeletions(DirectoryModel, drive, repo.worktree, observer)
+        })
+      }
+    }
+  ])
+  return pushListr
+}
+
+export { getInitListr, getStatusListr, getPushListr }

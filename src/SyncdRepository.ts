@@ -188,7 +188,7 @@ class SyncdRepository {
         if (dirent.isDirectory()) {
           const directoryPath = path.join(dirpath, dirent.name)
           if (directoryPath === this.syncddir) {
-            return
+            continue
           }
           await this.handleDirectory(directoryPath, dirpath)
           await this.walkWorkdir(directoryPath)

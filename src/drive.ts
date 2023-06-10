@@ -8,6 +8,8 @@ import { statusConfig } from './config/status'
 import { type File, type FileAttributes, type FileCreationAttributes } from './models/file'
 import { type FileUpdation, type FileUpdationAttributes, type FileUpdationCreationAttributes } from './models/fileUpdation'
 import { getRelativePath } from './utils'
+import { stat } from 'fs/promises'
+import resumableUpload from './resumable'
 
 async function getNewDirectory (Directory: Directory): Promise<Model<DirectoryAttributes, DirectoryCreationAttributes
 > | null> {
@@ -224,13 +226,21 @@ async function pushDirectoryDeletions (Directory: Directory, drive: drive_v3.Dri
   observer.complete()
 }
 
-async function pushFileAdditions (File: File, Directory: Directory, drive: drive_v3.Drive, rootPath: string, observer: any): Promise<void> {
+async function pushFileAdditions (File: File, Directory: Directory, accessToken: string, drive: drive_v3.Drive, rootPath: string, observer: any): Promise<void> {
   let newFile = await getNewFile(File, Directory)
   while (newFile != null) {
     const filePath = path.join(newFile.dataValues.parent, newFile.dataValues.name)
-    observer.next(getRelativePath(rootPath, filePath))
+    const fileSize = (await stat(filePath)).size
     // @ts-expect-error idk how to implement eager loading in ts
-    const fileId = await createFile(newFile.dataValues.name, newFile.dataValues.parent, newFile.dataValues.Directory.dataValues.driveId, drive)
+    const parentDriveId = newFile.dataValues.Directory.dataValues.driveId
+
+    let fileId
+    if (fileSize < 5 * 1024 * 1024) {
+      observer.next(getRelativePath(rootPath, filePath))
+      fileId = await createFile(newFile.dataValues.name, newFile.dataValues.parent, parentDriveId, drive)
+    } else {
+      fileId = await resumableUpload(rootPath, filePath, newFile.dataValues.name, parentDriveId, accessToken, drive, observer)
+    }
     await saveFileDriveId(File, newFile.dataValues.id, String(fileId))
     newFile = await getNewFile(File, Directory)
   }

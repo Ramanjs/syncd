@@ -5,12 +5,9 @@ import mime from 'mime-types'
 import { createReadStream } from 'fs'
 import { Op, type Model, type Sequelize } from 'sequelize'
 import { statusConfig } from './config/status'
-import getFileModel, { type File, type FileAttributes, type FileCreationAttributes } from './models/file'
-import getFileUpdationModel, { type FileUpdation, type FileUpdationAttributes, type FileUpdationCreationAttributes } from './models/fileUpdation'
-import Listr from 'listr'
-import Observable from 'zen-observable'
-import { type Observer } from 'rxjs'
-// import { Observable } from 'rxjs'
+import { type File, type FileAttributes, type FileCreationAttributes } from './models/file'
+import { type FileUpdation, type FileUpdationAttributes, type FileUpdationCreationAttributes } from './models/fileUpdation'
+import { getRelativePath } from './utils'
 
 async function getNewDirectory (Directory: Directory): Promise<Model<DirectoryAttributes, DirectoryCreationAttributes
 > | null> {
@@ -202,7 +199,7 @@ async function deleteFile (fileId: string, drive: drive_v3.Drive): Promise<void>
   })
 }
 
-async function pushDirectoryAdditions (Directory: Directory, drive: drive_v3.Drive, observer: Observer<any>): Promise<void> {
+async function pushDirectoryAdditions (Directory: Directory, drive: drive_v3.Drive, observer: any): Promise<void> {
   let newDirectory = await getNewDirectory(Directory)
   while (newDirectory != null) {
     const directoryName = path.basename(newDirectory.dataValues.path)
@@ -216,44 +213,57 @@ async function pushDirectoryAdditions (Directory: Directory, drive: drive_v3.Dri
   observer.complete()
 }
 
-async function pushDirectoryDeletions (Directory: Directory, drive: drive_v3.Drive): Promise<void> {
+async function pushDirectoryDeletions (Directory: Directory, drive: drive_v3.Drive, rootPath: string, observer: any): Promise<void> {
   let oldDirectory = await getDeletedDirectory(Directory)
   while (oldDirectory != null) {
+    observer.next(getRelativePath(rootPath, oldDirectory.dataValues.path))
     await deleteFile(oldDirectory.dataValues.driveId, drive)
     await saveDirectoryDeletion(Directory, oldDirectory.dataValues.path)
     oldDirectory = await getDeletedDirectory(Directory)
   }
+  observer.complete()
 }
 
-async function pushFileAdditions (File: File, Directory: Directory, drive: drive_v3.Drive): Promise<void> {
+async function pushFileAdditions (File: File, Directory: Directory, drive: drive_v3.Drive, rootPath: string, observer: any): Promise<void> {
   let newFile = await getNewFile(File, Directory)
   while (newFile != null) {
+    const filePath = path.join(newFile.dataValues.parent, newFile.dataValues.name)
+    observer.next(getRelativePath(rootPath, filePath))
     // @ts-expect-error idk how to implement eager loading in ts
     const fileId = await createFile(newFile.dataValues.name, newFile.dataValues.parent, newFile.dataValues.Directory.dataValues.driveId, drive)
     await saveFileDriveId(File, newFile.dataValues.id, String(fileId))
     newFile = await getNewFile(File, Directory)
   }
+  observer.complete()
 }
 
-async function pushFileUpdations (FileUpdation: FileUpdation, Directory: Directory, File: File, drive: drive_v3.Drive): Promise<void> {
+async function pushFileUpdations (FileUpdation: FileUpdation, Directory: Directory, File: File, drive: drive_v3.Drive, rootPath: string, observer: any): Promise<void> {
   let newFileUpdate = await getNewFileUpdation(FileUpdation)
   while (newFileUpdate != null) {
-    const oldParentDriveId = await getDirectoryDriveId(Directory, newFileUpdate.dataValues.oldParent)
-    const newParentDriveId = await getDirectoryDriveId(Directory, newFileUpdate.dataValues.newParent)
+    const oldParent = newFileUpdate.dataValues.oldParent
+    const newParent = newFileUpdate.dataValues.newParent
+    const oldPath = getRelativePath(rootPath, path.join(oldParent, newFileUpdate.dataValues.oldName))
+    const newPath = getRelativePath(rootPath, path.join(newParent, newFileUpdate.dataValues.newName))
+    observer.next(`Update ${oldPath} -> ${newPath}`)
+    const oldParentDriveId = await getDirectoryDriveId(Directory, oldParent)
+    const newParentDriveId = await getDirectoryDriveId(Directory, newParent)
     const fileDriveId = await getFileDriveId(File, newFileUpdate.dataValues.id)
     await updateFile(fileDriveId, newFileUpdate.dataValues.newName, newParentDriveId, oldParentDriveId, drive)
     await saveFileUpdation(FileUpdation, File, newFileUpdate.dataValues.id, newFileUpdate.dataValues.newName, newFileUpdate.dataValues.newParent)
     newFileUpdate = await getNewFileUpdation(FileUpdation)
   }
+  observer.complete()
 }
 
-async function pushFileDeletions (File: File, drive: drive_v3.Drive): Promise<void> {
+async function pushFileDeletions (File: File, drive: drive_v3.Drive, rootPath: string, observer: any): Promise<void> {
   let oldFile = await getDeletedFile(File)
   while (oldFile != null) {
+    observer.next(getRelativePath(rootPath, path.join(oldFile.dataValues.parent, oldFile.dataValues.name)))
     await deleteFile(oldFile.dataValues.driveId, drive)
     await saveFileDeletion(File, oldFile.dataValues.id)
     oldFile = await getDeletedFile(File)
   }
+  observer.complete()
 }
 
 async function init (sequelize: Sequelize, repoPath: string, drive: drive_v3.Drive): Promise<void> {
@@ -281,36 +291,16 @@ async function init (sequelize: Sequelize, repoPath: string, drive: drive_v3.Dri
   }
 }
 
-async function push (sequelize: Sequelize, drive: drive_v3.Drive): Promise<void> {
-  const DirectoryModel = getDirectoryModel(sequelize)
-  const FileModel = getFileModel(sequelize)
-  const FileUpdationModel = getFileUpdationModel(sequelize)
+/* async function push (sequelize: Sequelize, drive: drive_v3.Drive): Promise<void> { */
+/* const DirectoryModel = getDirectoryModel(sequelize) */
+/* const FileModel = getFileModel(sequelize) */
+/* const FileUpdationModel = getFileUpdationModel(sequelize) */
 
-  // await pushDirectoryAdditions(DirectoryModel, drive)
-  await pushFileAdditions(FileModel, DirectoryModel, drive)
-  await pushFileUpdations(FileUpdationModel, DirectoryModel, FileModel, drive)
-  await pushFileDeletions(FileModel, drive)
-  await pushDirectoryDeletions(DirectoryModel, drive)
-}
+/* // await pushDirectoryAdditions(DirectoryModel, drive) */
+/* await pushFileAdditions(FileModel, DirectoryModel, drive) */
+/* await pushFileUpdations(FileUpdationModel, DirectoryModel, FileModel, drive) */
+/* await pushFileDeletions(FileModel, drive) */
+/* await pushDirectoryDeletions(DirectoryModel, drive) */
+/* } */
 
-function getPushListr (sequelize: Sequelize, drive: drive_v3.Drive): Listr {
-  const DirectoryModel = getDirectoryModel(sequelize)
-  const FileModel = getFileModel(sequelize)
-  const FileUpdationModel = getFileUpdationModel(sequelize)
-
-  // @ts-expect-error idk wtf is happening here
-  const pushListr = new Listr([
-    {
-      title: 'Creating new folders',
-      task: () => {
-        return new Observable(observer => {
-          void pushDirectoryAdditions(DirectoryModel, drive, observer)
-        })
-      }
-    }
-  ])
-
-  return pushListr
-}
-
-export { init, push, getPushListr }
+export { init, pushDirectoryAdditions, pushFileAdditions, pushFileUpdations, pushFileDeletions, pushDirectoryDeletions }

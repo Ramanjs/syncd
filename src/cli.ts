@@ -1,15 +1,5 @@
-import SyncdRepository from './SyncdRepository'
-import path from 'path'
-import authorize from './auth/authClient'
-import { google } from 'googleapis'
 import { Command } from 'commander'
-import { getPushListr, init } from './drive'
-import getSequelizeConnection from './databaseConnection'
-import { checkIfUploadPending, repoFind } from './utils'
-import getDirectoryModel from './models/directory'
-import getFileModel from './models/file'
-import hashAllFiles from './checksums'
-import { getInitListr, getStatusListr } from './cliListrs'
+import { getInitListr, getStatusListr, getPushListr } from './cliListrs'
 const program = new Command()
 
 program
@@ -49,19 +39,13 @@ program
   .command('push')
   .description('push repository\'s contents to Drive')
   .action(async () => {
-    const repo = repoFind(process.cwd())
-    const sequelize = getSequelizeConnection(path.join(repo.syncddir, 'db.sqlite'))
-    const credentialsPath = path.join(repo.syncddir, 'credentials.json')
-    const tokenPath = path.join(repo.syncddir, 'token.json')
-    const authClient = await authorize(credentialsPath, tokenPath)
-    const drive = google.drive({ version: 'v3', auth: authClient })
-    const pushListr = getPushListr(sequelize, drive)
+    const pushListr = getPushListr()
     try {
       await pushListr.run()
-      process.exit(0)
     } catch (err) {
       console.error(err)
     }
+    process.exit(0)
   })
 
 export default program

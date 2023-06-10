@@ -107,15 +107,21 @@ function getPushListr (): Listr {
   const DirectoryModel = getDirectoryModel(sequelize)
   const FileModel = getFileModel(sequelize)
   const FileUpdationModel = getFileUpdationModel(sequelize)
+
   let drive: drive_v3.Drive
 
   // @ts-expect-error idk wtf is happening here
   const pushListr = new Listr([
     {
       title: 'Authorizing',
-      task: async () => {
+      task: async (ctx) => {
         const authClient = await authorize(credentialsPath, tokenPath)
         drive = google.drive({ version: 'v3', auth: authClient })
+        await drive.files.list({
+          pageSize: 1
+        })
+        ctx.accessToken = String(authClient.credentials.access_token)
+        console.log(ctx.accessToken)
       }
     },
     {
@@ -128,9 +134,9 @@ function getPushListr (): Listr {
     },
     {
       title: 'Uploading new files',
-      task: () => {
+      task: (ctx) => {
         return new Observable(observer => {
-          void pushFileAdditions(FileModel, DirectoryModel, drive, repo.worktree, observer)
+          void pushFileAdditions(FileModel, DirectoryModel, ctx.accessToken, drive, repo.worktree, observer)
         })
       }
     },

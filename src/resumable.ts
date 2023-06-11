@@ -15,7 +15,7 @@ function formatBytes (bytes: number, decimals = 2): string {
 
   const i = Math.floor(Math.log(bytes) / Math.log(k))
 
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`
+  return `${(bytes / Math.pow(k, i)).toFixed(dm)} ${sizes[i]}`
 }
 
 function setUpAxiosInterceptors (): AxiosInstance {
@@ -42,10 +42,10 @@ function setUpAxiosInterceptors (): AxiosInstance {
 
 function getUploadProgress (path: string, speed: number, progress: number, size: number, bars: number): string {
   let uploadProgress = path
-  const uploadedBytes = formatBytes(progress)
+  const uploadedBytes = formatBytes(progress).padEnd(10, ' ')
   const totalBytes = formatBytes(size)
-  const formatSpeed = formatBytes(speed)
-  uploadProgress += `  (${uploadedBytes} / ${totalBytes})  ${formatSpeed}/s`
+  const formatSpeed = (formatBytes(speed) + '/s').padEnd(10, ' ')
+  uploadProgress += `  (${uploadedBytes} / ${totalBytes})  ${formatSpeed}`
   uploadProgress += '  ['
 
   const progressBars = Math.round(bars * progress / size)

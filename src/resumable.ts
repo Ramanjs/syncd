@@ -6,6 +6,18 @@ import { stat } from 'fs/promises'
 import { getRelativePath } from './utils'
 import { updateFile } from './drive'
 
+function formatBytes (bytes: number, decimals = 2): string {
+  if (+bytes === 0) return '0 Bytes'
+
+  const k = 1024
+  const dm = decimals < 0 ? 0 : decimals
+  const sizes = ['Bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB']
+
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`
+}
+
 function setUpAxiosInterceptors (): AxiosInstance {
   const instance = axios.create()
   instance.interceptors.request.use((config) => {
@@ -30,8 +42,11 @@ function setUpAxiosInterceptors (): AxiosInstance {
 
 function getUploadProgress (path: string, speed: number, progress: number, size: number, bars: number): string {
   let uploadProgress = path
-  uploadProgress += ` ${Math.round(progress / 1024)} KiB ${Math.round(speed / 1024)} K/s`
-  uploadProgress += ' ['
+  const uploadedBytes = formatBytes(progress)
+  const totalBytes = formatBytes(size)
+  const formatSpeed = formatBytes(speed)
+  uploadProgress += `  (${uploadedBytes} / ${totalBytes})  ${formatSpeed}/s`
+  uploadProgress += '  ['
 
   const progressBars = Math.round(bars * progress / size)
 

@@ -6,20 +6,6 @@ import { stat } from 'fs/promises'
 import { getRelativePath } from './utils'
 import { updateFile } from './drive'
 
-function bitCount (n: number): number {
-  n = n - ((n >> 1) & 0x55555555)
-  n = (n & 0x33333333) + ((n >> 2) & 0x33333333)
-  return ((n + (n >> 4) & 0xF0F0F0F) * 0x1010101) >> 24
-}
-
-function nearestValidChunk (n: number): number {
-  while (bitCount(n) !== 1) {
-    n++
-  }
-  const minChunk = 256 * 1024
-  return minChunk * Math.floor(n / minChunk)
-}
-
 function setUpAxiosInterceptors (): AxiosInstance {
   const instance = axios.create()
   instance.interceptors.request.use((config) => {
@@ -51,11 +37,8 @@ function getUploadProgress (path: string, speed: number, progress: number, size:
 
   for (let i = 0; i < bars; i++) {
     if (i < progressBars) {
-      // uploadProgress += '▄'
       uploadProgress += '■'
     } else {
-      // uploadProgress += '▁'
-      // uploadProgress += '◼'
       uploadProgress += '⬝'
     }
   }
@@ -65,7 +48,7 @@ function getUploadProgress (path: string, speed: number, progress: number, size:
   return uploadProgress
 }
 
-async function getResumableUri (filePath: string, accessToken: string, drive: drive_v3.Drive): Promise<string> {
+async function getResumableUri (filePath: string, accessToken: string): Promise<string> {
   const mimeType = mime.lookup(filePath) !== false ? String(mime.lookup(filePath)) : '[*/*]'
 
   const resumableUriRes = await axios
@@ -114,7 +97,8 @@ async function upload (resumableUri: string, axiosInstance: AxiosInstance, chunk
 }
 
 async function uploadFile (resumableUri: string, rootPath: string, filePath: string, accessToken: string, axiosInstance: AxiosInstance, observer: any): Promise<string> {
-  const CHUNK_SIZE = 5 * 1024 * 1024
+  let CHUNK_SIZE = 5 * 1024 * 1024
+  const minChunk = 256 * 1024
   const size = (await stat(filePath)).size
   let res
   let start = 0; let end = 0
@@ -142,7 +126,11 @@ async function uploadFile (resumableUri: string, rootPath: string, filePath: str
     }
 
     start = Number(res.range.slice(res.range.lastIndexOf('-') + 1)) + 1
-    // CHUNK_SIZE = Math.max(256 * 1024, nearestValidChunk(Math.round(CHUNK_SIZE / ((res.time / 2) / 1000))))
+
+    const chunksPerSec = Math.round(CHUNK_SIZE / ((res.time / 2) / 1000))
+    const nextChunkSize = minChunk * Math.floor(chunksPerSec / minChunk)
+    CHUNK_SIZE = Math.max(minChunk, nextChunkSize)
+
     progress += CHUNK_SIZE
   }
 
@@ -150,7 +138,7 @@ async function uploadFile (resumableUri: string, rootPath: string, filePath: str
 }
 
 async function resumableUpload (rootPath: string, filePath: string, fileName: string, parentDriveId: string, accessToken: string, drive: drive_v3.Drive, observer: any): Promise<string> {
-  const resumableUri = await getResumableUri(filePath, accessToken, drive)
+  const resumableUri = await getResumableUri(filePath, accessToken)
   const axiosInstance = setUpAxiosInterceptors()
   const fileId = await uploadFile(resumableUri, rootPath, filePath, accessToken, axiosInstance, observer)
   await updateFile(fileId, fileName, parentDriveId, '', drive)

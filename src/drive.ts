@@ -315,4 +315,4 @@ async function init (sequelize: Sequelize, repoPath: string, drive: drive_v3.Dri
 /* await pushDirectoryDeletions(DirectoryModel, drive) */
 /* } */
 
-export { init, pushDirectoryAdditions, pushFileAdditions, pushFileUpdations, pushFileDeletions, pushDirectoryDeletions }
+export { init, pushDirectoryAdditions, pushFileAdditions, pushFileUpdations, pushFileDeletions, pushDirectoryDeletions, updateFile }

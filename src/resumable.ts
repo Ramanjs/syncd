@@ -4,6 +4,7 @@ import { createReadStream, type ReadStream } from 'fs'
 import mime from 'mime-types'
 import { stat } from 'fs/promises'
 import { getRelativePath } from './utils'
+import { updateFile } from './drive'
 
 const CHUNK_SIZE = 1024 * 1024
 
@@ -13,9 +14,12 @@ function getUploadProgress (path: string, progress: number, size: number): strin
 
   for (let i = 0; i < size; i++) {
     if (i < progress) {
-      uploadProgress += '█'
+      // uploadProgress += '▄'
+      uploadProgress += '■'
     } else {
-      uploadProgress += '▁'
+      // uploadProgress += '▁'
+      // uploadProgress += '◼'
+      uploadProgress += '⬝'
     }
   }
 
@@ -24,27 +28,18 @@ function getUploadProgress (path: string, progress: number, size: number): strin
   return uploadProgress
 }
 
-async function getResumableUri (filePath: string, fileName: string, parentDriveId: string, accessToken: string, drive: drive_v3.Drive): Promise<string> {
-  const res = await drive.files.generateIds({
-    count: 1
-  })
-
+async function getResumableUri (filePath: string, accessToken: string, drive: drive_v3.Drive): Promise<string> {
   const mimeType = mime.lookup(filePath) !== false ? String(mime.lookup(filePath)) : '[*/*]'
-  const fileId = (res.data.ids != null) ? res.data.ids[0] : ''
-  const metadata = {
-    id: fileId,
-    name: fileName
-  }
-  const contentLength = Buffer.byteLength(JSON.stringify(metadata))
+
   const resumableUriRes = await axios
     .post('https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable',
-      metadata,
+      null,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           'X-Upload-Content-Type': mimeType,
           'Content-Type': 'application/json; charset=UTF-8',
-          'Content-Length': contentLength
+          'Content-Length': 0
         }
       })
 
@@ -110,8 +105,9 @@ async function uploadFile (resumableUri: string, rootPath: string, filePath: str
 }
 
 async function resumableUpload (rootPath: string, filePath: string, fileName: string, parentDriveId: string, accessToken: string, drive: drive_v3.Drive, observer: any): Promise<string> {
-  const resumableUri = await getResumableUri(filePath, fileName, parentDriveId, accessToken, drive)
+  const resumableUri = await getResumableUri(filePath, accessToken, drive)
   const fileId = await uploadFile(resumableUri, rootPath, filePath, accessToken, observer)
+  await updateFile(fileId, fileName, parentDriveId, '', drive)
   return fileId
 }
 

@@ -56,13 +56,12 @@ function getStatusListr (): Listr {
   const statusListr = new Listr([
     {
       title: 'Searching for pending operations',
-      task: async (ctx) => {
+      task: async (ctx, task) => {
         const isPending = await checkIfUploadPending(DirectoryModel, FileModel)
         ctx.isPending = isPending
-
-        // if (isPending) {
-        // console.log('There are pending uploads in your repository. Please run `syncd push` to publish them to Drive.')
-        // }
+        if (isPending) {
+          task.title = 'There are pending uploads in your repository. Please run `syncd push` to publish them to Drive.'
+        }
       }
     },
     {
@@ -89,8 +88,11 @@ function getStatusListr (): Listr {
     {
       title: 'Saving changes to local database',
       enabled: ctx => ctx.isPending === false,
-      task: async () => {
-        await repo.saveToDB()
+      task: async (ctx, task) => {
+        const res = await repo.saveToDB()
+        if (!res) {
+          task.title = 'No changes found. Repo backed up successfully.'
+        }
       }
     }
   ])
@@ -121,7 +123,6 @@ function getPushListr (): Listr {
           pageSize: 1
         })
         ctx.accessToken = String(authClient.credentials.access_token)
-        console.log(ctx.accessToken)
       }
     },
     {

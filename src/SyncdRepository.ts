@@ -182,26 +182,22 @@ class SyncdRepository {
   }
 
   async walkWorkdir (dirpath: string): Promise<void> {
-    try {
-      const dir = await opendir(dirpath)
-      for await (const dirent of dir) {
-        if (dirent.isDirectory()) {
-          const directoryPath = path.join(dirpath, dirent.name)
-          if (directoryPath === this.syncddir) {
-            continue
-          }
-          await this.handleDirectory(directoryPath, dirpath)
-          await this.walkWorkdir(directoryPath)
-        } else if (dirent.isFile()) {
-          await this.handleFile(dirent.name, dirpath)
+    const dir = await opendir(dirpath)
+    for await (const dirent of dir) {
+      if (dirent.isDirectory()) {
+        const directoryPath = path.join(dirpath, dirent.name)
+        if (directoryPath === this.syncddir) {
+          continue
         }
+        await this.handleDirectory(directoryPath, dirpath)
+        await this.walkWorkdir(directoryPath)
+      } else if (dirent.isFile()) {
+        await this.handleFile(dirent.name, dirpath)
       }
-    } catch (err) {
-      console.log(err)
     }
   }
 
-  async saveToDB (): Promise<void> {
+  async saveToDB (): Promise<boolean> {
     const sequelize = getSequelizeConnection(path.join(this.syncddir, 'db.sqlite'))
     const FileModel = getFileModel(sequelize)
     const DirectoryModel = getDirectoryModel(sequelize)
@@ -253,8 +249,10 @@ class SyncdRepository {
     if (this.fileAdditions.length === 0 && this.fileDeletions.length === 0 &&
        this.directoryAdditions.length === 0 && this.directoryDeletions.length === 0 &&
      this.fileUpdations.length === 0) {
-      console.log('No changes found. Repo backed up successfully.')
+      return false
     }
+
+    return true
   }
 }
 

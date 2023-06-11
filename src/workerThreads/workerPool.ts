@@ -59,7 +59,6 @@ export default class WorkerPool extends EventEmitter {
       }
 
       if (this.numFiles === this.filesProcessed) {
-        console.log('stopping worker pool')
         void this.cleanUp()
       }
     })

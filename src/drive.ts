@@ -107,7 +107,7 @@ async function getNewFileUpdation (FileUpdation: FileUpdation): Promise<Model<Fi
   return newFileUpdate
 }
 
-async function saveFileUpdation (FileUpdation: FileUpdation, File: File, fileId: number, newName: string, newParent: string): Promise<void> {
+async function saveFileUpdation (FileUpdation: FileUpdation, File: File, fileId: number, newName: string, newParent: string, lastModified: Date, lastChanged: Date): Promise<void> {
   await FileUpdation.destroy({
     where: {
       id: fileId
@@ -116,7 +116,9 @@ async function saveFileUpdation (FileUpdation: FileUpdation, File: File, fileId:
   await File.update({
     name: newName,
     parent: newParent,
-    status: statusConfig.DONE
+    status: statusConfig.DONE,
+    lastModified,
+    lastChanged
   }, {
     where: {
       id: fileId
@@ -259,7 +261,7 @@ async function pushFileUpdations (FileUpdation: FileUpdation, Directory: Directo
     const newParentDriveId = await getDirectoryDriveId(Directory, newParent)
     const fileDriveId = await getFileDriveId(File, newFileUpdate.dataValues.id)
     await updateFile(fileDriveId, newFileUpdate.dataValues.newName, newParentDriveId, oldParentDriveId, drive)
-    await saveFileUpdation(FileUpdation, File, newFileUpdate.dataValues.id, newFileUpdate.dataValues.newName, newFileUpdate.dataValues.newParent)
+    await saveFileUpdation(FileUpdation, File, newFileUpdate.dataValues.id, newFileUpdate.dataValues.newName, newFileUpdate.dataValues.newParent, newFileUpdate.dataValues.lastModified, newFileUpdate.dataValues.lastChanged)
     newFileUpdate = await getNewFileUpdation(FileUpdation)
   }
   observer.complete()

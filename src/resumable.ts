@@ -1,19 +1,56 @@
 import { type drive_v3 } from 'googleapis'
-import axios from 'axios'
+import axios, { type AxiosInstance } from 'axios'
 import { createReadStream, type ReadStream } from 'fs'
 import mime from 'mime-types'
 import { stat } from 'fs/promises'
 import { getRelativePath } from './utils'
 import { updateFile } from './drive'
 
-const CHUNK_SIZE = 1024 * 1024
+function bitCount (n: number): number {
+  n = n - ((n >> 1) & 0x55555555)
+  n = (n & 0x33333333) + ((n >> 2) & 0x33333333)
+  return ((n + (n >> 4) & 0xF0F0F0F) * 0x1010101) >> 24
+}
 
-function getUploadProgress (path: string, progress: number, size: number): string {
+function nearestValidChunk (n: number): number {
+  while (bitCount(n) !== 1) {
+    n++
+  }
+  const minChunk = 256 * 1024
+  return minChunk * Math.floor(n / minChunk)
+}
+
+function setUpAxiosInterceptors (): AxiosInstance {
+  const instance = axios.create()
+  instance.interceptors.request.use((config) => {
+    config.headers['request-startTime'] = process.hrtime()
+    return config
+  }, async (error) => {
+    return await Promise.reject(error)
+  })
+
+  instance.interceptors.response.use((response) => {
+    const start = response.config.headers['request-startTime']
+    const end = process.hrtime(start)
+    const milliseconds = Math.round((end[0] * 1000) + (end[1] / 1000000))
+    response.headers['request-duration'] = milliseconds
+    return response
+  }, async (error) => {
+    return await Promise.reject(error)
+  })
+
+  return instance
+}
+
+function getUploadProgress (path: string, speed: number, progress: number, size: number, bars: number): string {
   let uploadProgress = path
+  uploadProgress += ` ${Math.round(progress / 1024)} KiB ${Math.round(speed / 1024)} K/s`
   uploadProgress += ' ['
 
-  for (let i = 0; i < size; i++) {
-    if (i < progress) {
+  const progressBars = Math.round(bars * progress / size)
+
+  for (let i = 0; i < bars; i++) {
+    if (i < progressBars) {
       // uploadProgress += '▄'
       uploadProgress += '■'
     } else {
@@ -23,7 +60,7 @@ function getUploadProgress (path: string, progress: number, size: number): strin
     }
   }
 
-  uploadProgress += ']'
+  uploadProgress += `] ${Math.round(100 * progress / size)}%`
 
   return uploadProgress
 }
@@ -49,8 +86,8 @@ async function getResumableUri (filePath: string, accessToken: string, drive: dr
   return resumableUri
 }
 
-async function upload (resumableUri: string, chunk: ReadStream, accessToken: string, start: number, end: number, size: number): Promise<string> {
-  const res = await axios
+async function upload (resumableUri: string, axiosInstance: AxiosInstance, chunk: ReadStream, accessToken: string, start: number, end: number, size: number): Promise<{ range: string, time: number }> {
+  const res = await axiosInstance
     .put(resumableUri,
       chunk,
       {
@@ -63,18 +100,25 @@ async function upload (resumableUri: string, chunk: ReadStream, accessToken: str
       })
 
   if (res.status === 200) {
-    return res.data.id
+    return {
+      range: res.data.id,
+      time: res.headers['request-duration']
+    }
   }
+
+  return {
   // @ts-expect-error wtf
-  return res.headers.get('Range')
+    range: res.headers.get('Range'),
+    time: res.headers['request-duration']
+  }
 }
 
-async function uploadFile (resumableUri: string, rootPath: string, filePath: string, accessToken: string, observer: any): Promise<string> {
+async function uploadFile (resumableUri: string, rootPath: string, filePath: string, accessToken: string, axiosInstance: AxiosInstance, observer: any): Promise<string> {
+  const CHUNK_SIZE = 5 * 1024 * 1024
   const size = (await stat(filePath)).size
-  let range
+  let res
   let start = 0; let end = 0
   const relativePath = getRelativePath(rootPath, filePath)
-  const bars = size / CHUNK_SIZE
   let progress = 0
   while (true) {
     if (start + CHUNK_SIZE > size) {
@@ -89,24 +133,26 @@ async function uploadFile (resumableUri: string, rootPath: string, filePath: str
       end
     })
 
-    const uploadProgress = getUploadProgress(relativePath, progress, bars)
+    const uploadProgress = getUploadProgress(relativePath, CHUNK_SIZE, progress, size, 20)
     observer.next(uploadProgress)
-    range = await upload(resumableUri, stream, accessToken, start, end, size)
-    progress += 1
+    res = await upload(resumableUri, axiosInstance, stream, accessToken, start, end, size)
 
     if (end === size - 1) {
       break
     }
 
-    start = Number(range.slice(range.lastIndexOf('-') + 1)) + 1
+    start = Number(res.range.slice(res.range.lastIndexOf('-') + 1)) + 1
+    // CHUNK_SIZE = Math.max(256 * 1024, nearestValidChunk(Math.round(CHUNK_SIZE / ((res.time / 2) / 1000))))
+    progress += CHUNK_SIZE
   }
 
-  return range
+  return res.range
 }
 
 async function resumableUpload (rootPath: string, filePath: string, fileName: string, parentDriveId: string, accessToken: string, drive: drive_v3.Drive, observer: any): Promise<string> {
   const resumableUri = await getResumableUri(filePath, accessToken, drive)
-  const fileId = await uploadFile(resumableUri, rootPath, filePath, accessToken, observer)
+  const axiosInstance = setUpAxiosInterceptors()
+  const fileId = await uploadFile(resumableUri, rootPath, filePath, accessToken, axiosInstance, observer)
   await updateFile(fileId, fileName, parentDriveId, '', drive)
   return fileId
 }

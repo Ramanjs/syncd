@@ -65,7 +65,7 @@ function getStatusListr (): Listr {
         const isPending = await checkIfUploadPending(DirectoryModel, FileModel)
         ctx.isPending = isPending
         if (isPending) {
-          task.title = 'There are pending uploads in your repository. Please run `syncd push` to publish them to Drive.'
+          task.title = 'There are pending uploads in your repository. Please run `syncd push` first to publish them to Drive.'
         }
       }
     },
@@ -120,7 +120,18 @@ function getPushListr (): Listr {
   // @ts-expect-error idk wtf is happening here
   const pushListr = new Listr([
     {
+      title: 'Searching for pending operations',
+      task: async (ctx, task) => {
+        const isPending = await checkIfUploadPending(DirectoryModel, FileModel)
+        ctx.isPending = isPending
+        if (!isPending) {
+          task.title = 'There are no pending changes. Please run `syncd status` first to scan your repository.'
+        }
+      }
+    },
+    {
       title: 'Authorizing',
+      enabled: ctx => ctx.isPending,
       task: async (ctx) => {
         const authClient = await authorize(credentialsPath, tokenPath)
         drive = google.drive({ version: 'v3', auth: authClient })
@@ -132,6 +143,7 @@ function getPushListr (): Listr {
     },
     {
       title: 'Creating new folders',
+      enabled: ctx => ctx.isPending,
       task: () => {
         return new Observable(observer => {
           void pushDirectoryAdditions(DirectoryModel, drive, observer)
@@ -140,6 +152,7 @@ function getPushListr (): Listr {
     },
     {
       title: 'Uploading new files',
+      enabled: ctx => ctx.isPending,
       task: (ctx) => {
         return new Observable(observer => {
           void pushFileAdditions(FileModel, DirectoryModel, ctx.accessToken, drive, repo.worktree, observer)
@@ -148,6 +161,7 @@ function getPushListr (): Listr {
     },
     {
       title: 'Updating file metadata (moving/renaming)',
+      enabled: ctx => ctx.isPending,
       task: () => {
         return new Observable(observer => {
           void pushFileUpdations(FileUpdationModel, DirectoryModel, FileModel, drive, repo.worktree, observer)
@@ -155,7 +169,8 @@ function getPushListr (): Listr {
       }
     },
     {
-      title: 'Delete old files',
+      title: 'Deleting old files',
+      enabled: ctx => ctx.isPending,
       task: () => {
         return new Observable(observer => {
           void pushFileDeletions(FileModel, drive, repo.worktree, observer)
@@ -163,7 +178,8 @@ function getPushListr (): Listr {
       }
     },
     {
-      title: 'Clean empty folders',
+      title: 'Cleaning empty folders',
+      enabled: ctx => ctx.isPending,
       task: () => {
         return new Observable(observer => {
           void pushDirectoryDeletions(DirectoryModel, drive, repo.worktree, observer)

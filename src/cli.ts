@@ -16,8 +16,8 @@ program
     const initListr = getInitListr(pathToCredentials, pathToDirectory)
     try {
       await initListr.run()
-    } catch (err) {
-      console.error(err)
+    } catch {
+      process.exit(1)
     }
     process.exit(0)
   })
@@ -29,8 +29,8 @@ program
     const statusListr = getStatusListr()
     try {
       await statusListr.run()
-    } catch (err) {
-      console.error(err)
+    } catch {
+      process.exit(1)
     }
     process.exit(0)
   })
@@ -42,8 +42,8 @@ program
     const pushListr = getPushListr()
     try {
       await pushListr.run()
-    } catch (err) {
-      console.error(err)
+    } catch {
+      process.exit(1)
     }
     process.exit(0)
   })

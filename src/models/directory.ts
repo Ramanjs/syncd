@@ -3,8 +3,6 @@ import { statusConfig } from '../config/status'
 
 interface DirectoryAttributes {
   path: string
-  lastModified: Date
-  lastChanged: Date
   parent: string
   status: string
   driveId: string
@@ -22,14 +20,6 @@ function getDirectoryModel (sequelize: Sequelize): Directory {
         len: [1, 4096]
       },
       primaryKey: true
-    },
-    lastModified: {
-      type: DataTypes.DATE,
-      allowNull: false
-    },
-    lastChanged: {
-      type: DataTypes.DATE,
-      allowNull: false
     },
     parent: {
       type: DataTypes.STRING,

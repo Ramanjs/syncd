@@ -57,13 +57,9 @@ class SyncdRepository {
     await this.syncDB(sequelize)
     await sequelize.sync()
 
-    const stats = await stat(this.worktree)
-
     const DirectoryModel = getDirectoryModel(sequelize)
     await DirectoryModel.create({
       path: this.worktree,
-      lastModified: stats.mtime,
-      lastChanged: stats.ctime,
       status: statusConfig.DONE,
       parent: this.worktree
     })
@@ -135,12 +131,9 @@ class SyncdRepository {
       return directory.path === directoryPath
     })
 
-    const stats = await stat(directoryPath)
     if (directory.length === 0) {
       this.directoryAdditions.push({
         path: directoryPath,
-        lastModified: stats.mtime,
-        lastChanged: stats.ctime,
         parent: directoryParent,
         status: statusConfig.PENDING_ADDITION
       })

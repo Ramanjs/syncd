@@ -1,9 +1,9 @@
 {
   "name": "@ramanjs/syncd",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A CLI tool to sync your local directory with Google Drive",
   "main": "dist/index.js",
-  "private": "true",
+  "homepage": "https://github.com/ramanjs/syncd",
   "scripts": {
     "build": "rm -rf dist && tsc && chmod +x ./dist/index.js"
   },
@@ -20,10 +20,12 @@
   "author": {
     "name": "Ramanjeet Singh",
     "email": "raman.s2662@gmail.com",
-    "url": "https://github.com/Ramanjs"
+    "url": "https://github.com/ramanjs"
   },
   "license": "MIT",
-  "files": "dist/*",
+  "files": [
+    "dist"
+  ],
   "dependencies": {
     "@google-cloud/local-auth": "^2.1.1",
     "axios": "^1.4.0",

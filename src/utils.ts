@@ -1,6 +1,6 @@
 import path from 'path'
 import SyncdRepository from './SyncdRepository'
-import { statSync } from 'fs'
+import { existsSync, statSync } from 'fs'
 import { type File } from './models/file'
 import { type Directory } from './models/directory'
 import { statusConfig } from './config/status'
@@ -9,7 +9,8 @@ import { Op } from 'sequelize'
 function repoFind (curPath: string): SyncdRepository {
   curPath = path.resolve(curPath)
 
-  if (statSync(path.join(curPath, '.syncd')).isDirectory()) {
+  const syncdPath = path.join(curPath, '.syncd')
+  if (existsSync(syncdPath) && statSync(syncdPath).isDirectory()) {
     return new SyncdRepository(curPath)
   }
 

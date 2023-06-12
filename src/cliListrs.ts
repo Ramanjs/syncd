@@ -35,16 +35,26 @@ function getInitListr (pathToCredentials: string, pathToDirectory: string): List
     {
       title: 'Authorize on Drive in browser',
       task: async () => {
-        const credentialsPath = path.join(repo.syncddir, 'credentials.json')
-        const tokenPath = path.join(repo.syncddir, 'token.json')
-        authClient = await authorize(credentialsPath, tokenPath)
+        try {
+          const credentialsPath = path.join(repo.syncddir, 'credentials.json')
+          const tokenPath = path.join(repo.syncddir, 'token.json')
+          authClient = await authorize(credentialsPath, tokenPath)
+        } catch (err: any) {
+          await repo.deleteRepo()
+          throw Error(err.message)
+        }
       }
     },
     {
       title: 'Creating empty folder on Drive',
       task: async () => {
-        const drive = google.drive({ version: 'v3', auth: authClient })
-        await init(sequelize, repo.worktree, drive)
+        try {
+          const drive = google.drive({ version: 'v3', auth: authClient })
+          await init(sequelize, repo.worktree, drive)
+        } catch (err: any) {
+          await repo.deleteRepo()
+          throw Error(err.message)
+        }
       }
     }
   ])

@@ -137,6 +137,8 @@ async function uploadFile (resumableUri: string, rootPath: string, filePath: str
     res = await upload(resumableUri, axiosInstance, stream, accessToken, start, end, size)
 
     if (end === size - 1) {
+      const uploadProgress = getUploadProgress(relativePath, CHUNK_SIZE, progress, size, 20)
+      observer.next(uploadProgress)
       break
     }
 

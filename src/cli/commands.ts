@@ -1,5 +1,5 @@
 import { Command } from 'commander'
-import { getInitListr, getStatusListr, getPushListr } from './cliListrs'
+import { getInitListr, getStatusListr, getPushListr } from './listrs'
 const program = new Command()
 
 program

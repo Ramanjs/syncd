@@ -1,13 +1,13 @@
 import { type drive_v3 } from 'googleapis'
 import path from 'path'
-import getDirectoryModel, { type Directory, type DirectoryAttributes, type DirectoryCreationAttributes } from './models/directory'
+import getDirectoryModel, { type Directory, type DirectoryAttributes, type DirectoryCreationAttributes } from '../models/directory'
 import mime from 'mime-types'
 import { createReadStream } from 'fs'
 import { Op, type Model, type Sequelize } from 'sequelize'
-import { statusConfig } from './config/status'
-import { type File, type FileAttributes, type FileCreationAttributes } from './models/file'
-import { type FileUpdation, type FileUpdationAttributes, type FileUpdationCreationAttributes } from './models/fileUpdation'
-import { getRelativePath } from './utils'
+import { statusConfig } from '../config/status'
+import { type File, type FileAttributes, type FileCreationAttributes } from '../models/file'
+import { type FileUpdation, type FileUpdationAttributes, type FileUpdationCreationAttributes } from '../models/fileUpdation'
+import { getRelativePath } from '../utils'
 import { stat } from 'fs/promises'
 import resumableUpload from './resumable'
 
@@ -302,17 +302,5 @@ async function init (sequelize: Sequelize, repoPath: string, drive: drive_v3.Dri
     })
   }
 }
-
-/* async function push (sequelize: Sequelize, drive: drive_v3.Drive): Promise<void> { */
-/* const DirectoryModel = getDirectoryModel(sequelize) */
-/* const FileModel = getFileModel(sequelize) */
-/* const FileUpdationModel = getFileUpdationModel(sequelize) */
-
-/* // await pushDirectoryAdditions(DirectoryModel, drive) */
-/* await pushFileAdditions(FileModel, DirectoryModel, drive) */
-/* await pushFileUpdations(FileUpdationModel, DirectoryModel, FileModel, drive) */
-/* await pushFileDeletions(FileModel, drive) */
-/* await pushDirectoryDeletions(DirectoryModel, drive) */
-/* } */
 
 export { init, pushDirectoryAdditions, pushFileAdditions, pushFileUpdations, pushFileDeletions, pushDirectoryDeletions, updateFile }

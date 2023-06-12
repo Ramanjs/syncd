@@ -1,5 +1,5 @@
 #!/usr/bin/env node
 
-import program from './cli'
+import program from './cli/commands'
 
 void program.parseAsync()

@@ -3,7 +3,7 @@ import axios, { type AxiosInstance } from 'axios'
 import { createReadStream, type ReadStream } from 'fs'
 import mime from 'mime-types'
 import { stat } from 'fs/promises'
-import { getRelativePath } from './utils'
+import { getRelativePath } from '../utils'
 import { updateFile } from './drive'
 
 function formatBytes (bytes: number, decimals = 2): string {

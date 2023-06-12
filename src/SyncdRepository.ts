@@ -4,7 +4,7 @@ import getFileModel, { type FileAttributes, type FileCreationAttributes } from '
 import getDirectoryModel, { type DirectoryAttributes, type DirectoryCreationAttributes } from './models/directory'
 import getFileUpdationModel, { type FileUpdationCreationAttributes } from './models/fileUpdation'
 import { statusConfig } from './config/status'
-import { stat, opendir, copyFile } from 'fs/promises'
+import { stat, opendir, copyFile, rm } from 'fs/promises'
 import getSequelizeConnection from './databaseConnection'
 import { existsSync, mkdirSync, statSync } from 'fs'
 
@@ -71,6 +71,13 @@ class SyncdRepository {
     await copyFile(pathToCredentials, path.join(this.syncddir, 'credentials.json'))
 
     return sequelize
+  }
+
+  async deleteRepo (): Promise<void> {
+    await rm(this.syncddir, {
+      force: true,
+      recursive: true
+    })
   }
 
   async loadDatabase (): Promise<void> {

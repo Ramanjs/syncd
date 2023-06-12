@@ -23,8 +23,13 @@ function getInitListr (pathToCredentials: string, pathToDirectory: string): List
     {
       title: 'Initializing local repository',
       task: async () => {
-        repo = new SyncdRepository(pathToDirectory, true)
-        sequelize = await repo.createRepo(pathToCredentials)
+        try {
+          repo = new SyncdRepository(pathToDirectory, true)
+          sequelize = await repo.createRepo(pathToCredentials)
+        } catch (err: any) {
+          await repo.deleteRepo()
+          throw Error(err.message)
+        }
       }
     },
     {

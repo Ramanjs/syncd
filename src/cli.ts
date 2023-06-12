@@ -26,9 +26,15 @@ program
   .command('status')
   .description('health check of the repo, returns if previous backup was successful or if there are any changes in the repository contents')
   .action(async () => {
-    const statusListr = getStatusListr()
+    let statusListr
     try {
-      await statusListr.run()
+      statusListr = getStatusListr()
+    } catch (err: any) {
+      console.log(err.message)
+      process.exit(1)
+    }
+    try {
+      await statusListr?.run()
     } catch {
       process.exit(1)
     }
@@ -39,9 +45,15 @@ program
   .command('push')
   .description('push repository\'s contents to Drive')
   .action(async () => {
-    const pushListr = getPushListr()
+    let pushListr
     try {
-      await pushListr.run()
+      pushListr = getPushListr()
+    } catch (err: any) {
+      console.log(err.message)
+      process.exit(1)
+    }
+    try {
+      await pushListr?.run()
     } catch {
       process.exit(1)
     }

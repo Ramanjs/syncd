@@ -1,20 +1,29 @@
 {
-  "name": "syncd",
+  "name": "@ramanjs/syncd",
   "version": "0.1.0",
   "description": "A CLI tool to sync your local directory with Google Drive",
   "main": "dist/index.js",
   "private": "true",
   "scripts": {
-    "start": "node ./dist/index.js",
-    "build": "rm -rf dist && tsc -p . && chmod +x ./dist/index.js",
-    "dev": "nodemon ./src/index.ts"
+    "build": "rm -rf dist && tsc && chmod +x ./dist/index.js"
   },
   "bin": {
     "syncd": "./dist/index.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "backup",
+    "drive",
+    "google drive",
+    "terminal",
+    "cli"
+  ],
+  "author": {
+    "name": "Ramanjeet Singh",
+    "email": "raman.s2662@gmail.com",
+    "url": "https://github.com/Ramanjs"
+  },
+  "license": "MIT",
+  "files": "dist/*",
   "dependencies": {
     "@google-cloud/local-auth": "^2.1.1",
     "axios": "^1.4.0",

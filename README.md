@@ -48,7 +48,7 @@ To install the project, follow the steps below:
 Install the project using npm by running the following command:
 
 ```bash
-npm install -g syncd
+npm install -g @ramanjs/syncd
 ```
 
 This command will install the project globally, making the syncd command available throughout your system.

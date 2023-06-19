@@ -78,7 +78,6 @@ syncd init [options] <path-to-credentials> [path-to-directory]
 
 It will ask you to login to your Google account in your browser and grant access to your Drive.
 
-
 Arguments:
 
     path-to-credentials    path to your Google Drive credentials file, must be in json format
@@ -98,7 +97,7 @@ syncd status
 
 ### Uploading changes to Google Drive
 
-To upload new files and any changes to Google Drive, use the push command. This command initiates the synchronization process and handles uploading. It also supports resumable uploads for large files.
+To upload new files and any changes to Google Drive, use the push command. This command initiates the synchronization process and handles uploading.
 
 ```bash
 syncd push

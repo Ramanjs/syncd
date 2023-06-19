@@ -4,10 +4,7 @@
     <img alt="Version" src="https://img.shields.io/npm/v/@ramanjs/syncd?style=for-the-badge">
   </a>
   <a href="https://www.npmjs.com/package/syncd" target="_blank">
-    <img alt="Version" src="https://img.shields.io/npm/dependency-version/@ramanjs/syncd/googleapis?style=for-the-badge">
-  </a>
-  <a href="https://www.npmjs.com/package/syncd" target="_blank">
-    <img alt="Version" src="https://img.shields.io/npm/dependency-version/@ramanjs/syncd/sequelize?style=for-the-badge">
+    <img alt="Version" src="https://img.shields.io/npm/dt/%40ramanjs/syncd?style=for-the-badge">
   </a>
   <a href="#" target="_blank">
     <img alt="License: MIT" src="https://img.shields.io/npm/l/@ramanjs/syncd?style=for-the-badge" />
